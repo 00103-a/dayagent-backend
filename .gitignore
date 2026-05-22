@@ -22,6 +22,12 @@ dist/
 *.iml
 .vscode/
 
+# Docker
+agent_service/.env
+
+# 部署相关（服务器本地文件）
+nginx/nginx.conf.bak
+
 # OS
 .DS_Store
 Thumbs.db
