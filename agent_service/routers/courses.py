@@ -262,7 +262,7 @@ async def _process_cells_background(
             _ai_state["error"] = "AI 未能解析出有效课程"
             return
 
-        # Normalize and save
+        # Normalize and fill missing fields from raw cells via regex
         courses = []
         for c in courses_raw:
             name = str(c.get("name", "")).strip()
@@ -271,13 +271,29 @@ async def _process_cells_background(
             day = c.get("day")
             if not isinstance(day, int) or day < 1 or day > 7:
                 continue
+            teacher = str(c.get("teacher", "")).strip()
+            location = str(c.get("location", "")).strip()
+            weeks = str(c.get("weeks", "")).strip()
+            time_slot = str(c.get("time_slot", "")).strip()
+
+            # Fallback: fill missing fields from matching raw cell
+            if not teacher or not location or not weeks:
+                raw = _find_matching_cell(cells, day, time_slot)
+                if raw:
+                    if not teacher:
+                        teacher = _extract_teacher(raw)
+                    if not location:
+                        location = _extract_location(raw)
+                    if not weeks:
+                        weeks = _extract_weeks(raw)
+
             courses.append(normalize_course({
                 "name": name,
                 "day": day,
-                "time_slot": str(c.get("time_slot", "")),
-                "location": str(c.get("location", "")),
-                "teacher": str(c.get("teacher", "")),
-                "weeks": str(c.get("weeks", "")),
+                "time_slot": time_slot,
+                "location": location,
+                "teacher": teacher,
+                "weeks": weeks,
             }))
 
         if not courses:
@@ -331,6 +347,78 @@ def _parse_llm_course_json(content: str) -> list[dict]:
             pass
 
     return []
+
+
+def _find_matching_cell(cells: list, day, time_slot: str) -> str:
+    """Find the raw_text from a cell matching the given day and time_slot."""
+    for cell in cells:
+        if cell.get("day") == day and cell.get("time_slot", "") == time_slot:
+            return str(cell.get("raw_text", ""))
+    # Fallback: match by day only
+    for cell in cells:
+        if cell.get("day") == day:
+            return str(cell.get("raw_text", ""))
+    return ""
+
+
+def _extract_teacher(raw: str) -> str:
+    """Extract teacher name (2-3 Chinese chars before a digit sequence)."""
+    import re
+    # 2-3 Chinese chars immediately before week numbers or standalone digits
+    m = re.search(r'([\u4e00-\u9fff]{2,3})\d', raw)
+    if m:
+        name = m.group(1)
+        # Filter out non-name words
+        if name not in ('实验室', '田径场', '体育馆', '语音室'):
+            return name
+    return ""
+
+
+def _extract_location(raw: str) -> str:
+    """Extract classroom location from raw text."""
+    import re
+    # Pattern: X教DDDD (三教3421, 主教1101)
+    m = re.search(
+        r'[一二三四五六七八九十东西南北主分]*教\d+',
+        raw
+    )
+    if m:
+        return m.group(0)
+    # Standalone 3-4 digit room number
+    m = re.search(r'\b(\d{3,4})\b', raw)
+    if m and '教' not in raw:
+        return m.group(1)
+    # Special locations
+    m = re.search(r'(田径场|体育馆|实验室\d*|机房\d*|语音室\d*)', raw)
+    if m:
+        return m.group(1)
+    return ""
+
+
+def _extract_weeks(raw: str) -> str:
+    """Extract weeks pattern from raw text."""
+    import re
+    # Range: "1-16" with optional "(周)" or "周"
+    m = re.search(r'(\d+[-－]\d+)\s*(?:\(?周\)?)?', raw)
+    if m:
+        weeks = m.group(1)
+        suffix = ""
+        if "周" in raw[m.end():m.end()+5]:
+            suffix = "(周)"
+        # Check for course type
+        type_m = re.search(r'(讲课|实验|实践|上机|实习)', raw)
+        if type_m:
+            return f"{weeks}{suffix} {type_m.group(1)}"
+        return f"{weeks}{suffix}"
+    # List: "2,4,6,8"
+    m = re.search(r'(\d+(?:[,，]\d+)+)\s*(?:\(?周\)?)?', raw)
+    if m:
+        weeks = m.group(1)
+        type_m = re.search(r'(讲课|实验|实践|上机|实习)', raw)
+        if type_m:
+            return f"{weeks}(周) {type_m.group(1)}"
+        return f"{weeks}(周)"
+    return ""
 
 
 @router.get("")
