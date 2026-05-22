@@ -65,7 +65,7 @@ public class LifeAgentClient {
         if (newsApiKey != null && !newsApiKey.isEmpty()) url.append("&news_api_key=").append(newsApiKey);
         try {
             @SuppressWarnings("unchecked")
-            Map<String, Object> resp = restTemplate.getForObject(url, Map.class);
+            Map<String, Object> resp = restTemplate.getForObject(url.toString(), Map.class);
             return resp != null ? (String) resp.getOrDefault("news_text", "新闻数据获取失败") : "新闻数据获取失败";
         } catch (Exception e) {
             return "新闻服务暂不可用：" + e.getMessage();
@@ -84,7 +84,7 @@ public class LifeAgentClient {
         }
         try {
             @SuppressWarnings("unchecked")
-            Map<String, Object> resp = restTemplate.getForObject(url, Map.class);
+            Map<String, Object> resp = restTemplate.getForObject(url.toString(), Map.class);
             return resp != null ? (String) resp.getOrDefault("tasks_text", "学习通数据获取失败") : "学习通数据获取失败";
         } catch (Exception e) {
             return "学习通服务暂不可用：" + e.getMessage();

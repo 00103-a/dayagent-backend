@@ -1,6 +1,6 @@
 """学习通抓取独立接口"""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from agent_service.tools.chaoxing import fetch_chaoxing_tasks
 
