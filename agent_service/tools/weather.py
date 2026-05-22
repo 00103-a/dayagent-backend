@@ -66,6 +66,7 @@ async def fetch_weather(
       - condition_icon: 和风天气实时天气图标代码
     """
     api_key = api_key or os.getenv("WEATHER_API_KEY", "")
+    print(f"[weather] api_key received: '{api_key[:8]}...' (len={len(api_key)})" if api_key else "[weather] api_key is EMPTY")
     if not api_key:
         return {
             "weather": "天气 API Key 未配置（请在 App 设置中填写 Weather API Key）",

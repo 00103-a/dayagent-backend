@@ -29,6 +29,7 @@ public class LifeController {
         }
         UserSettings settings = userSettingsService.getByUserId(userId);
         String weatherKey = settings.getWeatherApiKey() != null ? settings.getWeatherApiKey() : "";
+        System.out.println("[LifeController] weather: userId=" + userId + ", weatherKey=" + (weatherKey.isEmpty() ? "EMPTY" : "SET(len=" + weatherKey.length() + ")"));
         Map<String, Object> result = lifeAgentClient.callWeather(location, lat, lng, weatherKey);
         return ResponseEntity.ok(result);
     }
@@ -46,6 +47,7 @@ public class LifeController {
         String llmBase = nullToEmpty(settings.getLlmBaseUrl());
         String llmModel = nullToEmpty(settings.getLlmModel());
         String newsKey = nullToEmpty(settings.getNewsApiKey());
+        System.out.println("[LifeController] news: userId=" + userId + ", llmKey=" + (llmKey.isEmpty() ? "EMPTY" : "SET") + ", newsKey=" + (newsKey.isEmpty() ? "EMPTY" : "SET"));
         String newsText = lifeAgentClient.callNews(goals, summary, llmKey, llmBase, llmModel, newsKey);
         return ResponseEntity.ok(Map.of("news_text", newsText));
     }

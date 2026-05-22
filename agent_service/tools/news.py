@@ -74,7 +74,9 @@ async def fetch_raw_news(api_key: str = "") -> list[dict[str, str]]:
     返回 [{"title": "", "summary": "", "url": "", "ctime": "", "source": ""}, ...]
     """
     key = api_key or _NEWS_API_KEY
+    print(f"[news] fetch_raw_news api_key: '{key[:8]}...' (len={len(key)})" if key else "[news] fetch_raw_news api_key is EMPTY")
     if not key or not _NEWS_API_URLS:
+        print(f"[news] fetch_raw_news aborting — no key or no URLs")
         return []
 
     # 并行拉取所有数据源
@@ -405,6 +407,7 @@ async def get_personalized_news(
     Returns:
         格式化的新闻文本，直接嵌入规划 prompt。无新闻时返回空字符串。
     """
+    print(f"[news] get_personalized_news: llm_key={'SET' if llm_key else 'EMPTY'}, news_key={'SET' if news_api_key else 'EMPTY'}")
     # Step 1: 提取关键词
     keywords = await extract_keywords_llm(
         goals, yesterday_summary,
