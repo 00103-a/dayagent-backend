@@ -42,9 +42,9 @@ def _get_time_for_slot(time_slot: str) -> str:
 
 # ── 学期周次 ────────────────────────────────────────────────────────────────
 
-def _parse_semester_start() -> date | None:
-    """从环境变量读取学期第一周的周一日期。格式: SEMESTER_START=2026-02-17"""
-    val = os.getenv("SEMESTER_START", "")
+def _parse_semester_start(semester_start: str = "") -> date | None:
+    """解析学期第一周的周一日期。优先用传入值，其次环境变量"""
+    val = semester_start or os.getenv("SEMESTER_START", "")
     if val:
         try:
             return datetime.strptime(val, "%Y-%m-%d").date()
@@ -53,9 +53,9 @@ def _parse_semester_start() -> date | None:
     return None
 
 
-def _get_current_week() -> int | None:
+def _get_current_week(semester_start: str = "") -> int | None:
     """返回当前是学期第几周（从 1 开始）。无配置则返回 None"""
-    start = _parse_semester_start()
+    start = _parse_semester_start(semester_start)
     if start is None:
         return None
     today = date.today()
@@ -269,7 +269,7 @@ def save_courses(courses: list[dict]) -> None:
     )
 
 
-def get_today_courses() -> str:
+def get_today_courses(semester_start: str = "") -> str:
     """
     返回今日课程的自然语言描述，自动过滤非本周课程。
     """
@@ -278,7 +278,7 @@ def get_today_courses() -> str:
         return "课表未导入：请先通过 POST /courses/import 导入课表数据"
 
     today = date.today()
-    current_week = _get_current_week()
+    current_week = _get_current_week(semester_start)
     weekday = today.weekday()  # 0=周一
     day_name = _WEEKDAY_NAMES[weekday]
     day_index = weekday + 1  # 1=周一

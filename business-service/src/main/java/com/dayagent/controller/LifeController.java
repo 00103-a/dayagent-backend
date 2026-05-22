@@ -66,7 +66,13 @@ public class LifeController {
     @GetMapping("/courses")
     public ResponseEntity<Map<String, Object>> listCourses(
             @RequestParam(required = false) String week) {
-        Map<String, Object> result = lifeAgentClient.callListCourses(week);
+        Long userId = UserContext.getCurrentUser();
+        String semesterStart = "";
+        if (userId != null) {
+            UserSettings settings = userSettingsService.getByUserId(userId);
+            semesterStart = nullToEmpty(settings.getSemesterStart());
+        }
+        Map<String, Object> result = lifeAgentClient.callListCourses(week, semesterStart);
         return ResponseEntity.ok(result);
     }
 

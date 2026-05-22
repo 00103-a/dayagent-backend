@@ -93,12 +93,22 @@ public class LifeAgentClient {
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> callListCourses(String week) {
-        String url = agentBaseUrl + "/courses";
+        return callListCourses(week, "");
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> callListCourses(String week, String semesterStart) {
+        StringBuilder url = new StringBuilder(agentBaseUrl + "/courses");
+        boolean hasParam = false;
         if (week != null && !week.isBlank()) {
-            url += "?week=" + week;
+            url.append("?week=").append(week);
+            hasParam = true;
+        }
+        if (semesterStart != null && !semesterStart.isEmpty()) {
+            url.append(hasParam ? "&" : "?").append("semester_start=").append(semesterStart);
         }
         try {
-            return restTemplate.getForObject(url, Map.class);
+            return restTemplate.getForObject(url.toString(), Map.class);
         } catch (Exception e) {
             return Map.of("count", 0, "courses", java.util.List.of(), "text", "课表服务暂不可用");
         }
