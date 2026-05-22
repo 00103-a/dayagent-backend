@@ -19,7 +19,10 @@ from dotenv import load_dotenv
 # 无论从哪个目录启动, 都正确找到 agent_service/.env
 # 必须在 import routers 之前加载，否则 tools/news.py 等模块在
 # 模块级读取 os.getenv() 时拿不到 .env 中的配置
-load_dotenv(Path(__file__).parent / ".env")
+# 开发模式: 从 .env 文件加载；容器模式: 直接用环境变量
+_env_file = Path(__file__).parent / ".env"
+if _env_file.exists():
+    load_dotenv(_env_file)
 
 from fastapi import FastAPI
 from agent_service.routers import plan, courses, weather, news, chaoxing, chat
