@@ -1,0 +1,73 @@
+<h2>MVP 页面范围</h2>
+<p class="subtitle">第一版做多少？后端 API 全链路已通，前端是主要工作量</p>
+
+<div class="options">
+  <div class="option" data-choice="lean">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>极简 3 页 <span class="label">约 1.5 周</span></h3>
+      <p>
+        <strong>今日</strong>（规划生成 + 展示 + AI 对话内嵌）
+        · <strong>日记</strong>（写总结 + AI 反馈）
+        · <strong>设置</strong>（账号/目标/快递管理）
+      </p>
+      <div class="mockup" style="margin-top: 8px;">
+        <div class="mockup-header">极简版 — 底部 3 个 Tab</div>
+        <div class="mockup-body">
+          <div style="display:flex; flex-direction:column; gap:8px; align-items:center; padding:16px 0;">
+            <div style="display:flex; gap:8px; width:100%; max-width:320px;">
+              <div style="flex:1; height:40px; background:rgba(224,112,48,0.12); border:1px solid rgba(224,112,48,0.25); display:flex; align-items:center; justify-content:center; font-size:11px;">今日</div>
+              <div style="flex:1; height:40px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:11px;">日记</div>
+              <div style="flex:1; height:40px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:11px;">设置</div>
+            </div>
+            <p style="font-size:11px; opacity:0.5;">快递/课表/音乐 → 设置页内折叠或下拉刷新</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="standard">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>标准 5 页 <span class="label">约 2.5 周</span></h3>
+      <p>
+        <strong>今日</strong> · <strong>日记</strong> · <strong>生活</strong>（课表+快递+新闻）
+        · <strong>目标</strong> · <strong>设置</strong>
+      </p>
+      <div class="mockup" style="margin-top: 8px;">
+        <div class="mockup-header">标准版 — 5 个 Tab</div>
+        <div class="mockup-body">
+          <div style="display:flex; gap:4px; width:100%; max-width:360px;">
+            <div style="flex:1; height:36px; background:rgba(224,112,48,0.12); border:1px solid rgba(224,112,48,0.25); display:flex; align-items:center; justify-content:center; font-size:10px;">今日</div>
+            <div style="flex:1; height:36px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:10px;">日记</div>
+            <div style="flex:1; height:36px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:10px;">生活</div>
+            <div style="flex:1; height:36px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:10px;">目标</div>
+            <div style="flex:1; height:36px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:10px;">设置</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="full">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>全功能 <span class="label">约 3.5 周</span></h3>
+      <p>
+        <strong>今日</strong> · <strong>日记</strong> · <strong>课表</strong> · <strong>快递</strong> · <strong>新闻</strong>
+        · <strong>目标</strong> · <strong>AI 对话</strong> · <strong>设置</strong>
+      </p>
+      <p style="font-size:12px; opacity:0.6;">和桌面端功能对等，但会拖慢上线节奏</p>
+    </div>
+  </div>
+</div>
+
+<hr style="margin: 32px 0; border-color: rgba(224,112,48,0.15);">
+
+<h2>推荐：A → B 渐进</h2>
+<p class="subtitle">
+  第一版先上<strong style="color:#e07030">极简 3 页</strong>，验证移动端体验。<br>
+  课表、快递、新闻的 API 都是现成的，后续加 Tab 不影响架构。<br>
+  第一天就能用的东西，比等 3 周才用上更重要。
+</p>

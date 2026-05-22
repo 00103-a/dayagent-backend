@@ -1,0 +1,83 @@
+<h2>DayAgent 移动端 — 技术方案</h2>
+<p class="subtitle">后端 Java + Python 全部复用，只做前端皮。选哪个技术路线？</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="expo">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Expo (React Native)</h3>
+      <p>
+        全新原生壳 · 推送通知 · 流畅动画 · OTA 热更新<br>
+        <span style="color:#e07030">推荐</span> — 最适合单人长期维护的项目
+      </p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>原生推送（Expo Push）免费</li>
+          <li>动画丝滑，60fps 粒子没问题</li>
+          <li>EAS Build 云端打包，不需要 Mac 也能出 iOS</li>
+          <li>TypeScript 全栈，API 层逻辑直接迁移</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>像素风 UI 需要手写（但完全可控）</li>
+          <li>需要重写全部组件（约 2-3 周）</li>
+          <li>学习 Expo 生态（文件路由、expo-splash 等）</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="capacitor">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Capacitor (Vue 3 壳)</h3>
+      <p>
+        现有 Vue 代码包进原生容器 · 改造成本低 · 同构开发
+      </p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>现有 Vue 组件直接复用，改动小</li>
+          <li>一套代码跑 Web + Android + iOS</li>
+          <li>Capacitor 插件生态（相机、推送等）</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>Canvas 粒子/CRT 扫描线在手机上性能可疑</li>
+          <li>WebView 体验不如原生流畅</li>
+          <li>像素风移动端适配工作量不亚于重写</li>
+          <li>桌面端遗留代码（Electron IPC、窗口控制）成包袱</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="pwa">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>PWA</h3>
+      <p>
+        现有前端加 manifest.json · 浏览器安装 · 零额外依赖
+      </p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>最快上线（1-2 天）</li>
+          <li>不需要 App Store</li>
+          <li>桌面/移动共用一套</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>iOS 不支持推送通知</li>
+          <li>无法后台运行</li>
+          <li>使用体验"像网页"而非 App</li>
+          <li>每天两次推送提醒是最核心功能</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr style="margin: 32px 0; border-color: rgba(224,112,48,0.15);">
+
+<h2>我的推荐：A — Expo</h2>
+<p class="subtitle">
+  理由很简单：每日规划助手最核心的价值是<strong style="color:#e07030">早 8 点推送规划 + 晚 9 点总结提醒</strong>。<br>
+  PWA 做不到 iOS 推送，Capacitor 背着 Electron 遗留包袱在手机上很别扭。<br>
+  Expo 重写工作量大，但写得干净——只做移动端需要的 3 个页面。
+</p>

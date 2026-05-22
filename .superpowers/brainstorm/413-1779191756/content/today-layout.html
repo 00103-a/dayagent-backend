@@ -1,0 +1,157 @@
+<h2>今日页 — 两种布局方案</h2>
+<p class="subtitle">左边：所有内容在一个滚动流里 · 右边：Hero 固定 + 卡片区滚动</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">A: 全滚动流</div>
+    <div class="mockup-body">
+      <div style="background:#080604; padding:12px; max-width:240px; margin:0 auto; font-family:monospace; font-size:10px; color:#c8b89a; border:1px solid rgba(224,112,48,0.15);">
+
+        <!-- Status bar -->
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px; opacity:0.6;">07:42 ▊▊▊▊ 92%</div>
+
+        <!-- Hero area -->
+        <div style="text-align:center; padding:16px 0 12px; border:1px solid rgba(224,112,48,0.15); margin-bottom:8px; position:relative;">
+          <div style="font-size:9px; opacity:0.5;">5月19日 周二 · 南昌</div>
+          <div style="font-size:13px; margin:4px 0;">小雨 16°C</div>
+          <!-- pixel cat -->
+          <div style="margin:6px auto; width:32px; height:32px; position:relative;">
+            <div style="width:16px;height:16px;background:#e07030;margin:4px auto 0;border-radius:0;position:relative;">
+              <div style="position:absolute;top:-4px;left:2px;width:4px;height:4px;background:#e07030;"></div>
+              <div style="position:absolute;top:-4px;right:2px;width:4px;height:4px;background:#e07030;"></div>
+              <div style="position:absolute;top:4px;left:3px;width:3px;height:2px;background:#fff;"></div>
+              <div style="position:absolute;top:4px;right:3px;width:3px;height:2px;background:#fff;"></div>
+            </div>
+          </div>
+          <div style="font-size:8px; opacity:0.4; margin-top:2px;">Morning.</div>
+        </div>
+
+        <!-- Plan card -->
+        <div style="border:1px solid rgba(224,112,48,0.18); padding:8px; margin-bottom:6px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="color:#e07030; font-size:10px;">◆ 今日行动规划</span>
+            <span style="font-size:8px; opacity:0.4;">刷新</span>
+          </div>
+          <div style="font-size:9px; line-height:1.8;">
+            ▸ 完成高等数学作业<br>
+            ▸ 复习英语 Unit 5<br>
+            ▸ 取快递 · 耳机<br>
+            ▸ 运动 30 分钟<br>
+            ▸ 写今日总结
+          </div>
+        </div>
+
+        <!-- Courses -->
+        <div style="border:1px solid rgba(224,112,48,0.12); padding:6px; margin-bottom:6px; font-size:9px;">
+          <div style="color:#e07030; font-size:9px; margin-bottom:4px;">课表</div>
+          08:30 高数 3-201<br>
+          10:20 英语 2-405<br>
+          14:00 数据库 1-302
+        </div>
+
+        <!-- News -->
+        <div style="border:1px solid rgba(224,112,48,0.12); padding:6px; margin-bottom:6px; font-size:9px;">
+          <div style="color:#e07030; font-size:9px; margin-bottom:4px;">为你推荐</div>
+          ▸ Pixel art 工具推荐<br>
+          ▸ 明日降温至 12°C
+        </div>
+
+        <!-- Yesterday -->
+        <div style="border:1px solid rgba(224,112,48,0.08); padding:6px; font-size:9px; opacity:0.7;">
+          昨日 · "效率不错"
+        </div>
+
+        <!-- Bottom nav -->
+        <div style="display:flex; margin-top:10px; border-top:1px solid rgba(224,112,48,0.12); padding-top:6px;">
+          <div style="flex:1; text-align:center; color:#e07030; font-size:9px;">今日</div>
+          <div style="flex:1; text-align:center; color:#6b5a48; font-size:9px;">日记</div>
+          <div style="flex:1; text-align:center; color:#6b5a48; font-size:9px;">生活</div>
+          <div style="flex:1; text-align:center; color:#6b5a48; font-size:9px;">目标</div>
+          <div style="flex:1; text-align:center; color:#6b5a48; font-size:9px;">设置</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B: Hero 固定 + 卡片滚动</div>
+    <div class="mockup-body">
+      <div style="background:#080604; padding:12px; max-width:240px; margin:0 auto; font-family:monospace; font-size:10px; color:#c8b89a; border:1px solid rgba(224,112,48,0.15);">
+
+        <!-- Status bar -->
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px; opacity:0.6;">07:42 ▊▊▊▊ 92%</div>
+
+        <!-- Fixed Hero (sticky top) -->
+        <div style="text-align:center; padding:10px 0 8px; border:1px solid rgba(224,112,48,0.18); margin-bottom:6px; position:relative; background:rgba(8,6,4,0.95);">
+          <div style="font-size:8px; opacity:0.5;">5月19日 周二 · 南昌</div>
+          <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-top:3px;">
+            <span style="font-size:11px;">小雨 16°C</span>
+            <span style="font-size:8px; opacity:0.4;">|</span>
+            <span style="font-size:11px;">◆ 今日规划</span>
+          </div>
+        </div>
+
+        <!-- Scrollable cards area -->
+        <div style="max-height:280px; overflow-y:auto; padding-right:2px;">
+          <!-- CTA button (if no plan yet) -->
+          <div style="border:2px solid rgba(224,112,48,0.3); padding:10px; margin-bottom:6px; text-align:center;">
+            <div style="font-size:11px; color:#e07030;">◆ 生成今日行动规划</div>
+            <div style="font-size:8px; opacity:0.4; margin-top:2px;">tap to begin</div>
+          </div>
+
+          <div style="border:1px solid rgba(224,112,48,0.12); padding:6px; margin-bottom:6px; font-size:9px;">
+            <div style="color:#e07030; margin-bottom:4px;">课表</div>
+            08:30 高数 · 10:20 英语 · 14:00 数据库
+          </div>
+
+          <div style="border:1px solid rgba(224,112,48,0.12); padding:6px; margin-bottom:6px; font-size:9px;">
+            <div style="color:#e07030; margin-bottom:4px;">快递</div>
+            📦 顺丰 · 运输中
+          </div>
+
+          <div style="border:1px solid rgba(224,112,48,0.08); padding:6px; font-size:9px; opacity:0.7;">
+            ▸ 为你推荐 · 2 条
+          </div>
+        </div>
+
+        <!-- Bottom nav -->
+        <div style="display:flex; margin-top:8px; border-top:1px solid rgba(224,112,48,0.12); padding-top:6px;">
+          <div style="flex:1; text-align:center; color:#e07030; font-size:9px;">今日</div>
+          <div style="flex:1; text-align:center; color:#6b5a48; font-size:9px;">日记</div>
+          <div style="flex:1; text-align:center; color:#6b5a48; font-size:9px;">生活</div>
+          <div style="flex:1; text-align:center; color:#6b5a48; font-size:9px;">目标</div>
+          <div style="flex:1; text-align:center; color:#6b5a48; font-size:9px;">设置</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr style="margin: 32px 0; border-color: rgba(224,112,48,0.15);">
+
+<h2>关键差异</h2>
+
+<div class="options">
+  <div class="option" data-choice="scroll">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>全滚动流</h3>
+      <p>
+        页面是一个长列表，所有内容往下方排。<br>
+        像素猫在 Hero 区域，随滚动离开屏幕。<br>
+        <span style="opacity:0.6;">感觉像"刷动态"，信息连续但猫会不见</span>
+      </p>
+    </div>
+  </div>
+  <div class="option" data-choice="fixed-hero">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Hero 固定 + 卡片滚动 <span class="label" style="color:#e07030">推荐</span></h3>
+      <p>
+        顶部 Hero（天气+猫+标题）固定不滚。<br>
+        下方卡片区域独立滚动。<br>
+        <span style="opacity:0.6;">像素猫始终可见——它是陪你检查计划的伙伴</span>
+      </p>
+    </div>
+  </div>
+</div>
