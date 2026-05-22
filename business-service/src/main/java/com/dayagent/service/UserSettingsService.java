@@ -78,7 +78,8 @@ public class UserSettingsService {
         }
     }
 
-    public Map<String, Object> buildSettingsMap(UserSettings s) {
+    /** Returns masked settings for display in the GET endpoint */
+    public Map<String, Object> buildSettingsMapMasked(UserSettings s) {
         Map<String, Object> map = new HashMap<>();
         map.put("llm_api_key", mask(s.getLlmApiKey()));
         map.put("llm_base_url", s.getLlmBaseUrl());
@@ -92,6 +93,27 @@ public class UserSettingsService {
         map.put("default_location", s.getDefaultLocation());
         map.put("semester_start", s.getSemesterStart());
         return map;
+    }
+
+    /** Returns real (unmasked) settings for passing to Python agent */
+    public Map<String, Object> buildSettingsMap(UserSettings s) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("llm_api_key", nullToEmpty(s.getLlmApiKey()));
+        map.put("llm_base_url", s.getLlmBaseUrl());
+        map.put("llm_model", s.getLlmModel());
+        map.put("weather_api_key", nullToEmpty(s.getWeatherApiKey()));
+        map.put("news_api_key", nullToEmpty(s.getNewsApiKey()));
+        map.put("kuaidi100_customer", nullToEmpty(s.getKuaidi100Customer()));
+        map.put("kuaidi100_key", nullToEmpty(s.getKuaidi100Key()));
+        map.put("chaoxing_username", nullToEmpty(s.getChaoxingUsername()));
+        map.put("chaoxing_password", nullToEmpty(s.getChaoxingPassword()));
+        map.put("default_location", s.getDefaultLocation());
+        map.put("semester_start", s.getSemesterStart());
+        return map;
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private String mask(String value) {

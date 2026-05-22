@@ -23,7 +23,7 @@ public class UserSettingsController {
             return Result.error(401, "未登录");
         }
         UserSettings settings = settingsService.getByUserId(userId);
-        return Result.success(settingsService.buildSettingsMap(settings));
+        return Result.success(settingsService.buildSettingsMapMasked(settings));
     }
 
     @PutMapping
