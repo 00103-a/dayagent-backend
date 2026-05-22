@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/dayagent?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/dayagent?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
     password: ${DB_PASSWORD:114514}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -21,4 +21,4 @@ jwt:
 
 # Python Agent 服务地址
 agent:
-  base-url: http://localhost:8000
+  base-url: ${AGENT_BASE_URL:http://localhost:8000}
