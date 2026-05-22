@@ -17,8 +17,6 @@ from agent_service.tools.courses import (
     _get_current_week,
     _is_week_active,
 )
-from agent_service.tools.jwc import browser_login_and_parse
-
 # Background AI processing state (in-memory, resets on restart)
 _ai_state: dict = {"processing": False, "error": None, "done": False, "count": 0}
 
@@ -129,31 +127,6 @@ async def json_import(payload: dict = Body(...)) -> dict:
         "total_weeks": 20,
         "message": f"成功导入 {len(courses)} 门课程",
     }
-
-
-@router.post("/browser-import")
-async def browser_import(payload: Optional[dict] = Body(None)) -> dict:
-    """启动浏览器，用户手动登录教务后自动抓取课表
-
-    调用后会在本机启动一个 Chromium 浏览器窗口，
-    用户在窗口中手动完成 CAS 登录（含验证码），
-    进入课表页面后系统自动抓取 HTML、解析课程、关闭浏览器。
-
-    超时时间：5 分钟
-    """
-    try:
-        courses = await browser_login_and_parse(timeout_seconds=300)
-        save_courses(courses)
-        return {
-            "status": "ok",
-            "count": len(courses),
-            "courses": courses,
-            "message": f"成功从教务系统导入 {len(courses)} 门课程",
-        }
-    except RuntimeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"抓取失败：{e}")
 
 
 @router.post("/ai-import")
