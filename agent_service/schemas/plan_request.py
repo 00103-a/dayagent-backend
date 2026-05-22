@@ -21,6 +21,7 @@ class PlanRequest(BaseModel):
     location: str = Field(default=_DEFAULT_LOCATION, description="城市，用于查天气")
     force_refresh: bool = Field(default=False, description="跳过缓存，强制重新抓取")
     parcels: list[ParcelInfo] = Field(default_factory=list, description="用户未签收的快递列表")
+    user_settings: dict = Field(default_factory=dict, description="用户配置的 API Key 等")
 
 
 class ParcelStatus(BaseModel):

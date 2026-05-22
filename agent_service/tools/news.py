@@ -28,11 +28,12 @@ _NEWS_API_URLS = [u.strip() for u in os.getenv("NEWS_API_URL", "").split(",") if
 _PER_SOURCE_NUM = 20
 
 
-async def _fetch_single_source(url: str, source_label: str) -> list[dict[str, str]]:
+async def _fetch_single_source(url: str, source_label: str, api_key: str = "") -> list[dict[str, str]]:
     """从单个新闻源拉取数据"""
     import json as _json
 
-    params: dict[str, object] = {"key": _NEWS_API_KEY, "num": _PER_SOURCE_NUM}
+    key = api_key or _NEWS_API_KEY
+    params: dict[str, object] = {"key": key, "num": _PER_SOURCE_NUM}
 
     extra_params_str = os.getenv("NEWS_API_PARAMS", "")
     if extra_params_str:
@@ -63,7 +64,7 @@ async def _fetch_single_source(url: str, source_label: str) -> list[dict[str, st
         return []
 
 
-async def fetch_raw_news() -> list[dict[str, str]]:
+async def fetch_raw_news(api_key: str = "") -> list[dict[str, str]]:
     """
     从所有配置的新闻源并行拉取新闻，合并后去重返回。
 
@@ -72,7 +73,8 @@ async def fetch_raw_news() -> list[dict[str, str]]:
 
     返回 [{"title": "", "summary": "", "url": "", "ctime": "", "source": ""}, ...]
     """
-    if not _NEWS_API_KEY or not _NEWS_API_URLS:
+    key = api_key or _NEWS_API_KEY
+    if not key or not _NEWS_API_URLS:
         return []
 
     # 并行拉取所有数据源
@@ -80,7 +82,7 @@ async def fetch_raw_news() -> list[dict[str, str]]:
     for url in _NEWS_API_URLS:
         # 从 URL 提取来源名（如 "guonei"、"guoji"）
         label = url.rstrip("/").split("/")[-2] if "/index" in url else url.split("/")[-1]
-        tasks.append(_fetch_single_source(url, label))
+        tasks.append(_fetch_single_source(url, label, key))
 
     results = await asyncio.gather(*tasks)
 
@@ -195,6 +197,9 @@ def extract_keywords_basic(goals: list[str], yesterday_summary: str) -> list[str
 async def extract_keywords_llm(
     goals: list[str],
     yesterday_summary: str,
+    llm_key: str = "",
+    llm_base_url: str = "",
+    llm_model: str = "",
 ) -> list[str]:
     """
     用 LLM 从目标和总结中提取 3~8 个核心关键词。
@@ -214,7 +219,7 @@ async def extract_keywords_llm(
 关键词应当是用户关心的领域、技术栈、考试或主题。
 只返回关键词列表，每行一个，不要编号，不要解释。"""
 
-    llm_key = os.getenv("LLM_API_KEY", "")
+    llm_key = llm_key or os.getenv("LLM_API_KEY", "")
     if not llm_key or llm_key == "sk-placeholder":
         return extract_keywords_basic(goals, yesterday_summary)
 
@@ -226,13 +231,14 @@ async def extract_keywords_llm(
             kwargs["verify"] = False
         http_client = httpx.AsyncClient(**kwargs)
 
+        base = llm_base_url or os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
         ai_client = AsyncOpenAI(
-            base_url=os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
+            base_url=base,
             api_key=llm_key,
             http_client=http_client,
         )
 
-        model = os.getenv("LLM_MODEL", "deepseek-chat")
+        model = llm_model or os.getenv("LLM_MODEL", "deepseek-chat")
         resp = await ai_client.chat.completions.create(
             model=model,
             messages=[
@@ -272,6 +278,9 @@ async def filter_news_by_llm(
     raw_news: list[dict[str, str]],
     keywords: list[str],
     max_pick: int = 5,
+    llm_key: str = "",
+    llm_base_url: str = "",
+    llm_model: str = "",
 ) -> list[dict[str, str]]:
     """
     调用 LLM 根据关键词从原始新闻中筛选出最相关的。
@@ -287,7 +296,7 @@ async def filter_news_by_llm(
     if not raw_news:
         return []
 
-    llm_key = os.getenv("LLM_API_KEY", "")
+    llm_key = llm_key or os.getenv("LLM_API_KEY", "")
     if not llm_key or llm_key == "sk-placeholder":
         return raw_news[:max_pick]
 
@@ -311,13 +320,14 @@ async def filter_news_by_llm(
             kwargs["verify"] = False
         http_client = httpx.AsyncClient(**kwargs)
 
+        base = llm_base_url or os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
         ai_client = AsyncOpenAI(
-            base_url=os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
+            base_url=base,
             api_key=llm_key,
             http_client=http_client,
         )
 
-        model = os.getenv("LLM_MODEL", "deepseek-chat")
+        model = llm_model or os.getenv("LLM_MODEL", "deepseek-chat")
         resp = await ai_client.chat.completions.create(
             model=model,
             messages=[
@@ -378,6 +388,10 @@ async def filter_news_by_llm(
 async def get_personalized_news(
     goals: list[str],
     yesterday_summary: str,
+    llm_key: str = "",
+    llm_base_url: str = "",
+    llm_model: str = "",
+    news_api_key: str = "",
 ) -> str:
     """
     对外主函数：获取个性化新闻，返回格式化的自然语言文本。
@@ -392,12 +406,15 @@ async def get_personalized_news(
         格式化的新闻文本，直接嵌入规划 prompt。无新闻时返回空字符串。
     """
     # Step 1: 提取关键词
-    keywords = await extract_keywords_llm(goals, yesterday_summary)
+    keywords = await extract_keywords_llm(
+        goals, yesterday_summary,
+        llm_key=llm_key, llm_base_url=llm_base_url, llm_model=llm_model,
+    )
     if not keywords:
         keywords = _default_keywords()
 
     # Step 2: 拉取原始新闻
-    raw_news = await fetch_raw_news()
+    raw_news = await fetch_raw_news(api_key=news_api_key)
 
     if not raw_news:
         return ""
@@ -412,7 +429,10 @@ async def get_personalized_news(
     per_source = 2 if len(source_groups) > 1 else 5
     all_selected: list[dict[str, str]] = []
     for src, items in source_groups.items():
-        picked = await filter_news_by_llm(items, keywords, max_pick=per_source)
+        picked = await filter_news_by_llm(
+            items, keywords, max_pick=per_source,
+            llm_key=llm_key, llm_base_url=llm_base_url, llm_model=llm_model,
+        )
         all_selected.extend(picked)
 
     if not all_selected:

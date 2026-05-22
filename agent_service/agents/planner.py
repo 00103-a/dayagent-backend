@@ -134,10 +134,16 @@ def _build_user_message(
 请根据以上数据，给我今日汇报。"""
 
 
-def _create_llm_client() -> tuple[AsyncOpenAI, str, str]:
+def _create_llm_client(
+    llm_api_key: str = "",
+    llm_base_url: str = "",
+    llm_model: str = "",
+) -> tuple[AsyncOpenAI, str, str]:
     """创建 LLM 客户端并返回 (client, model, system_prompt)"""
     system_prompt = _load_prompt("planner_prompt.txt")
-    model = os.getenv("LLM_MODEL", "deepseek-chat")
+    api_key = llm_api_key or os.getenv("LLM_API_KEY", "sk-placeholder")
+    base_url = llm_base_url or os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
+    model = llm_model or os.getenv("LLM_MODEL", "deepseek-chat")
 
     for var in ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy", "LLM_PROXY"]:
         val = os.environ.get(var, "")
@@ -145,11 +151,11 @@ def _create_llm_client() -> tuple[AsyncOpenAI, str, str]:
             print(f"[LLM-诊断] 环境变量 {var}={val}")
 
     http_client = _build_http_client()
-    print(f"[LLM-诊断] model={model}, base_url={os.getenv('LLM_BASE_URL', 'https://api.deepseek.com')}")
+    print(f"[LLM-诊断] model={model}, base_url={base_url}")
 
     ai_client = AsyncOpenAI(
-        base_url=os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
-        api_key=os.getenv("LLM_API_KEY", "sk-placeholder"),
+        base_url=base_url,
+        api_key=api_key,
         http_client=http_client,
     )
     return ai_client, model, system_prompt
@@ -182,6 +188,9 @@ async def generate_plan(
     memory_hint: str,
     news_info: str = "",
     parcells_info: str = "",
+    llm_api_key: str = "",
+    llm_base_url: str = "",
+    llm_model: str = "",
 ) -> PlanResponse:
     """调用 LLM 生成当日规划（stream=True 内部收集，降低首 token 延迟）"""
 
@@ -195,7 +204,11 @@ async def generate_plan(
         parcells_info=parcells_info,
     )
 
-    ai_client, model, system_prompt = _create_llm_client()
+    ai_client, model, system_prompt = _create_llm_client(
+        llm_api_key=llm_api_key,
+        llm_base_url=llm_base_url,
+        llm_model=llm_model,
+    )
 
     try:
         stream = await ai_client.chat.completions.create(

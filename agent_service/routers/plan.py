@@ -1,6 +1,6 @@
 import asyncio
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from agent_service.schemas.plan_request import PlanRequest, PlanResponse, ParcelStatus
 from agent_service.tools.weather import fetch_weather
@@ -19,15 +19,23 @@ async def _get_course_info() -> str:
     return get_today_courses()
 
 
-async def _get_parcel_info(parcels: list) -> tuple[str, list[ParcelStatus]]:
+async def _get_parcel_info(
+    parcels: list,
+    kuaidi100_customer: str = "",
+    kuaidi100_key: str = "",
+) -> tuple[str, list[ParcelStatus]]:
     """查询快递状态，返回 (汇总文本, 结构化状态列表)"""
     if not parcels:
         return "", []
 
     parcel_dicts = [p.model_dump() for p in parcels]
 
-    # 只调一次 API：先查详细结果，再复用生成汇总文本
-    detailed = await query_parcels_detailed(parcel_dicts)
+    # Pass per-user kuaidi100 credentials
+    detailed = await query_parcels_detailed(
+        parcel_dicts,
+        customer=kuaidi100_customer if kuaidi100_customer else None,
+        key=kuaidi100_key if kuaidi100_key else None,
+    )
     summary = await query_parcels_batch(parcel_dicts, pre_queried=detailed)
 
     statuses = [
@@ -49,13 +57,31 @@ async def _get_parcel_info(parcels: list) -> tuple[str, list[ParcelStatus]]:
 @router.post("/generate-plan", response_model=PlanResponse)
 async def generate_plan_endpoint(req: PlanRequest) -> PlanResponse:
     """核心接口：生成今日规划"""
+    settings = req.user_settings or {}
+    llm_key = settings.get("llm_api_key", "")
+    llm_base = settings.get("llm_base_url", "")
+    llm_model = settings.get("llm_model", "")
+    weather_key = settings.get("weather_api_key", "")
+
+    if not llm_key:
+        raise HTTPException(status_code=400, detail={
+            "error": "请先在设置中配置 DeepSeek API Key",
+            "guide": "deepseek"
+        })
 
     # 1. 并行拉取多源数据（互不依赖，asyncio.gather 同时发请求）
     weather_info, chaoxing_tasks, course_info, (parcels_summary, parcel_statuses) = await asyncio.gather(
-        fetch_weather(req.location),
-        fetch_chaoxing_tasks(),
+        fetch_weather(req.location, api_key=weather_key),
+        fetch_chaoxing_tasks(
+            username=settings.get("chaoxing_username", ""),
+            password=settings.get("chaoxing_password", ""),
+        ),
         _get_course_info(),
-        _get_parcel_info(req.parcels),
+        _get_parcel_info(
+            req.parcels,
+            kuaidi100_customer=settings.get("kuaidi100_customer", ""),
+            kuaidi100_key=settings.get("kuaidi100_key", ""),
+        ),
     )
 
     # 2. 长期记忆分析（第二阶段，数据库不可用时降级）
@@ -74,6 +100,9 @@ async def generate_plan_endpoint(req: PlanRequest) -> PlanResponse:
         goals=req.goals,
         memory_hint=memory_hint,
         parcells_info=parcels_summary,
+        llm_api_key=llm_key,
+        llm_base_url=llm_base,
+        llm_model=llm_model,
     )
 
     # 4. 附加快递状态（Java 端用于更新数据库）

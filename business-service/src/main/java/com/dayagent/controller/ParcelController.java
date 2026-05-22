@@ -1,6 +1,7 @@
 package com.dayagent.controller;
 
 import com.dayagent.common.Result;
+import com.dayagent.context.UserContext;
 import com.dayagent.entity.Parcel;
 import com.dayagent.mapper.ParcelMapper;
 import lombok.RequiredArgsConstructor;
@@ -8,26 +9,26 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * 快递单号管理 — 单用户版本，无需登录
- */
 @RestController
 @RequestMapping("/api/parcel")
 @RequiredArgsConstructor
 public class ParcelController {
 
-    private static final Long DEFAULT_USER_ID = 1L;
     private final ParcelMapper parcelMapper;
 
     @PostMapping
     public Result<?> addParcel(@RequestBody Parcel parcel) {
+        Long userId = UserContext.getCurrentUser();
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
         if (parcel.getTrackingNo() == null || parcel.getTrackingNo().isBlank()) {
             return Result.error(400, "快递单号不能为空");
         }
         if (parcel.getCarrier() == null || parcel.getCarrier().isBlank()) {
             return Result.error(400, "快递公司不能为空");
         }
-        parcel.setUserId(DEFAULT_USER_ID);
+        parcel.setUserId(userId);
         parcel.setIsDelivered(false);
         parcel.setStatus("待查询");
         parcelMapper.insert(parcel);
@@ -36,9 +37,13 @@ public class ParcelController {
 
     @GetMapping
     public Result<List<Parcel>> listParcels() {
+        Long userId = UserContext.getCurrentUser();
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
         List<Parcel> list = parcelMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Parcel>()
-                        .eq(Parcel::getUserId, DEFAULT_USER_ID)
+                        .eq(Parcel::getUserId, userId)
                         .orderByDesc(Parcel::getCreatedAt)
         );
         return Result.success(list);
@@ -46,8 +51,12 @@ public class ParcelController {
 
     @GetMapping("/{id}/refresh")
     public Result<Parcel> refreshParcel(@PathVariable Long id) {
+        Long userId = UserContext.getCurrentUser();
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
         Parcel parcel = parcelMapper.selectById(id);
-        if (parcel == null) {
+        if (parcel == null || !parcel.getUserId().equals(userId)) {
             return Result.error(404, "快递单号不存在");
         }
         return Result.success(parcel);
@@ -55,8 +64,12 @@ public class ParcelController {
 
     @DeleteMapping("/{id}")
     public Result<?> deleteParcel(@PathVariable Long id) {
+        Long userId = UserContext.getCurrentUser();
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
         Parcel parcel = parcelMapper.selectById(id);
-        if (parcel == null) {
+        if (parcel == null || !parcel.getUserId().equals(userId)) {
             return Result.error(404, "快递单号不存在");
         }
         parcelMapper.deleteById(id);

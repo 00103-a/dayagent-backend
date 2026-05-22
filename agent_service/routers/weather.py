@@ -12,6 +12,7 @@ async def get_weather(
     location: str = Query("北京", description="城市名称"),
     lat: float | None = Query(None, description="纬度"),
     lng: float | None = Query(None, description="经度"),
+    api_key: str = Query("", description="用户的和风天气 API Key"),
 ):
     """查询城市当日天气（支持城市名或经纬度定位）
 
@@ -21,7 +22,7 @@ async def get_weather(
         condition_text: 和风天气实时天气状况文字（晴/多云/阴/雨/雪等）
         condition_icon: 和风天气实时天气图标代码
     """
-    result = await fetch_weather(location, lat=lat, lng=lng)
+    result = await fetch_weather(location, lat=lat, lng=lng, api_key=api_key)
     return {
         "location": location,
         "weather": result["weather"],

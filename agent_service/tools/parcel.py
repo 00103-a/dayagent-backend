@@ -225,6 +225,8 @@ async def query_parcels_batch(
 
 async def query_parcels_detailed(
     parcels: list[dict[str, str]],
+    customer: str | None = None,
+    key: str | None = None,
 ) -> list[dict[str, Any]]:
     """批量查询快递状态，返回结构化数据。
 
@@ -236,7 +238,7 @@ async def query_parcels_detailed(
         carrier = p.get("carrier", "")
         if not tracking_no:
             continue
-        r = await query_parcel(tracking_no, carrier)
+        r = await query_parcel(tracking_no, carrier, customer=customer, key=key)
         r["remark"] = p.get("remark", "")
         results.append(r)
     return results

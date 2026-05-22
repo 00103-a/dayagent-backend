@@ -41,13 +41,13 @@ RETRY_BACKOFF = 1.5  # 重试等待秒数（指数增长）
 # ---- 对外接口 ----
 
 
-async def fetch_chaoxing_tasks() -> str:
+async def fetch_chaoxing_tasks(username: str = "", password: str = "") -> str:
     """抓取学习通课程列表，返回自然语言描述"""
-    username = os.getenv("CHAOXING_USERNAME", "")
-    password = os.getenv("CHAOXING_PASSWORD", "")
+    username = username or os.getenv("CHAOXING_USERNAME", "")
+    password = password or os.getenv("CHAOXING_PASSWORD", "")
 
     if not username or not password:
-        return "学习通账号未配置（请在 .env 里填 CHAOXING_USERNAME 和 CHAOXING_PASSWORD）"
+        return "学习通账号未配置（请在 App 设置中填写超星账号和密码）"
 
     # 诊断：检查隐藏的代理环境变量
     for var in ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"]:

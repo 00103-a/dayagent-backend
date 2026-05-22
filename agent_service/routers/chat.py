@@ -33,11 +33,14 @@ def _build_http_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(**kwargs)
 
 
-def _create_llm_client() -> AsyncOpenAI:
+def _create_llm_client(
+    api_key: str = "",
+    base_url: str = "",
+) -> AsyncOpenAI:
     http_client = _build_http_client()
     return AsyncOpenAI(
-        base_url=os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
-        api_key=os.getenv("LLM_API_KEY", "sk-placeholder"),
+        base_url=base_url or os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
+        api_key=api_key or os.getenv("LLM_API_KEY", "sk-placeholder"),
         http_client=http_client,
     )
 
@@ -52,9 +55,14 @@ async def chat(payload: dict = Body(...)) -> dict:
     user_id = payload.get("userId", 1)
     message = (payload.get("message") or "").strip()
     context = payload.get("context")
+    user_settings = payload.get("user_settings", {})
 
     if not message:
         return {"reply": "你想聊什么？"}
+
+    llm_key = user_settings.get("llm_api_key", "")
+    if not llm_key:
+        return {"reply": "请先在设置中配置 DeepSeek API Key"}
 
     # 构建用户消息（可选包含上下文）
     user_content = message
@@ -77,8 +85,9 @@ async def chat(payload: dict = Body(...)) -> dict:
         if ctx_parts:
             user_content = f"{message}\n\n背景信息：\n" + "\n".join(ctx_parts)
 
-    model = os.getenv("LLM_MODEL", "deepseek-chat")
-    ai_client = _create_llm_client()
+    model = user_settings.get("llm_model") or os.getenv("LLM_MODEL", "deepseek-chat")
+    base_url = user_settings.get("llm_base_url", "")
+    ai_client = _create_llm_client(api_key=llm_key, base_url=base_url)
 
     try:
         stream = await ai_client.chat.completions.create(

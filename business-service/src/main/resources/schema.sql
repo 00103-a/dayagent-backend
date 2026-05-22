@@ -58,3 +58,23 @@ CREATE TABLE daily_plan (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_plan_date (user_id, plan_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 用户设置（API Key 等按用户配置）
+CREATE TABLE IF NOT EXISTS user_settings (
+    id                BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id           BIGINT NOT NULL UNIQUE,
+    llm_api_key       VARCHAR(255),
+    llm_base_url      VARCHAR(255) DEFAULT 'https://api.deepseek.com',
+    llm_model         VARCHAR(100) DEFAULT 'deepseek-v4-pro',
+    weather_api_key   VARCHAR(100),
+    news_api_key      VARCHAR(100),
+    kuaidi100_customer VARCHAR(100),
+    kuaidi100_key     VARCHAR(100),
+    chaoxing_username VARCHAR(50),
+    chaoxing_password VARCHAR(100),
+    default_location  VARCHAR(50) DEFAULT '南昌',
+    semester_start    VARCHAR(20),
+    created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at        DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_user_settings_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

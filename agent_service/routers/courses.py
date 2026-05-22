@@ -72,11 +72,14 @@ def _build_llm_http_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(**kwargs)
 
 
-def _create_llm_client() -> AsyncOpenAI:
+def _create_llm_client(
+    api_key: str = "",
+    base_url: str = "",
+) -> AsyncOpenAI:
     http_client = _build_llm_http_client()
     return AsyncOpenAI(
-        base_url=os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
-        api_key=os.getenv("LLM_API_KEY", "sk-placeholder"),
+        base_url=base_url or os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
+        api_key=api_key or os.getenv("LLM_API_KEY", "sk-placeholder"),
         http_client=http_client,
     )
 
@@ -172,13 +175,20 @@ async def ai_import(payload: dict = Body(...), background_tasks: BackgroundTasks
     if _ai_state["processing"]:
         return {"status": "busy", "message": "已有解析任务进行中，请稍后再试"}
 
+    # Extract optional per-user LLM config
+    llm_key = payload.get("llm_api_key") or os.getenv("LLM_API_KEY", "sk-placeholder")
+    llm_base = payload.get("llm_base_url") or os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
+    llm_model = payload.get("llm_model") or os.getenv("LLM_MODEL", "deepseek-chat")
+
     # Reset state and start background processing
     _ai_state["processing"] = True
     _ai_state["done"] = False
     _ai_state["error"] = None
     _ai_state["count"] = 0
 
-    background_tasks.add_task(_process_cells_background, cells)
+    background_tasks.add_task(
+        _process_cells_background, cells, llm_key, llm_base, llm_model
+    )
 
     return {
         "status": "ok",
@@ -198,7 +208,12 @@ async def ai_status() -> dict:
     }
 
 
-async def _process_cells_background(cells: list) -> None:
+async def _process_cells_background(
+    cells: list,
+    llm_key: str = "",
+    llm_base: str = "",
+    llm_model: str = "",
+) -> None:
     """后台任务：调用 LLM 解析 raw cells，保存课程"""
     LLM_TIMEOUT = 90  # seconds per LLM call
     try:
@@ -213,8 +228,8 @@ async def _process_cells_background(cells: list) -> None:
         user_message = "请解析以下课表 cell 数据：\n\n" + "\n".join(cell_lines)
         print(f"[AI-IMPORT] starting background task: {len(cells)} cells, {len(user_message)} chars")
 
-        model = os.getenv("LLM_MODEL", "deepseek-chat")
-        ai_client = _create_llm_client()
+        model = llm_model or os.getenv("LLM_MODEL", "deepseek-chat")
+        ai_client = _create_llm_client(api_key=llm_key, base_url=llm_base)
 
         try:
             stream = await asyncio.wait_for(

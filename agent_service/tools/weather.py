@@ -53,7 +53,9 @@ def _normalize_host(host: str) -> str:
 
 
 async def fetch_weather(
-    location: str, lat: float | None = None, lng: float | None = None
+    location: str, lat: float | None = None, lng: float | None = None,
+    api_key: str = "",
+    weather_host: str = "",
 ) -> dict:
     """获取城市当日天气。数据源：和风天气 Web API
 
@@ -63,16 +65,16 @@ async def fetch_weather(
       - condition_text: 和风天气实时天气文字（晴/多云/阴/雨/雪等）
       - condition_icon: 和风天气实时天气图标代码
     """
-    api_key = os.getenv("WEATHER_API_KEY", "")
+    api_key = api_key or os.getenv("WEATHER_API_KEY", "")
     if not api_key:
         return {
-            "weather": "天气 API Key 未配置（请在 .env 里填 WEATHER_API_KEY）",
+            "weather": "天气 API Key 未配置（请在 App 设置中填写 Weather API Key）",
             "condition_text": "",
             "condition_icon": "",
         }
 
-    weather_host = _normalize_host(os.getenv("WEATHER_API_HOST", "https://api.qweather.com"))
-    geo_host = _normalize_host(os.getenv("GEO_API_HOST", weather_host))
+    host = _normalize_host(weather_host or os.getenv("WEATHER_API_HOST", "https://api.qweather.com"))
+    geo_host = _normalize_host(os.getenv("GEO_API_HOST", host))
 
     async with httpx.AsyncClient(trust_env=False) as client:
         # 有经纬度时，组装 "lng,lat" 格式传给 Geo API 反查城市
@@ -90,7 +92,7 @@ async def fetch_weather(
             }
 
         # Step 2: 查询实时天气
-        result = await _fetch_weather_now(client, api_key, weather_host, city_id)
+        result = await _fetch_weather_now(client, api_key, host, city_id)
         if result is None:
             return {
                 "weather": f"{display_name}：天气数据获取失败",
