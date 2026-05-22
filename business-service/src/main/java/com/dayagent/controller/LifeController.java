@@ -1,29 +1,35 @@
 package com.dayagent.controller;
 
+import com.dayagent.context.UserContext;
+import com.dayagent.entity.UserSettings;
 import com.dayagent.service.LifeAgentClient;
+import com.dayagent.service.UserSettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/**
- * 生活模块聚合接口：天气、新闻、课表、学习通
- * 所有接口走 Java 代理到 Python，统一 /api/ 前缀 + JWT 鉴权
- */
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class LifeController {
 
     private final LifeAgentClient lifeAgentClient;
+    private final UserSettingsService userSettingsService;
 
     @GetMapping("/weather")
     public ResponseEntity<Map<String, Object>> getWeather(
             @RequestParam(defaultValue = "北京") String location,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng) {
-        Map<String, Object> result = lifeAgentClient.callWeather(location, lat, lng);
+        Long userId = UserContext.getCurrentUser();
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "未登录"));
+        }
+        UserSettings settings = userSettingsService.getByUserId(userId);
+        String weatherKey = settings.getWeatherApiKey() != null ? settings.getWeatherApiKey() : "";
+        Map<String, Object> result = lifeAgentClient.callWeather(location, lat, lng, weatherKey);
         return ResponseEntity.ok(result);
     }
 
@@ -31,13 +37,29 @@ public class LifeController {
     public ResponseEntity<Map<String, Object>> getNews(
             @RequestParam(defaultValue = "") String goals,
             @RequestParam(defaultValue = "") String summary) {
-        String newsText = lifeAgentClient.callNews(goals, summary);
+        Long userId = UserContext.getCurrentUser();
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "未登录"));
+        }
+        UserSettings settings = userSettingsService.getByUserId(userId);
+        String llmKey = nullToEmpty(settings.getLlmApiKey());
+        String llmBase = nullToEmpty(settings.getLlmBaseUrl());
+        String llmModel = nullToEmpty(settings.getLlmModel());
+        String newsKey = nullToEmpty(settings.getNewsApiKey());
+        String newsText = lifeAgentClient.callNews(goals, summary, llmKey, llmBase, llmModel, newsKey);
         return ResponseEntity.ok(Map.of("news_text", newsText));
     }
 
     @GetMapping("/chaoxing/tasks")
     public ResponseEntity<Map<String, Object>> getChaoxingTasks() {
-        String tasksText = lifeAgentClient.callChaoxingTasks();
+        Long userId = UserContext.getCurrentUser();
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "未登录"));
+        }
+        UserSettings settings = userSettingsService.getByUserId(userId);
+        String username = nullToEmpty(settings.getChaoxingUsername());
+        String password = nullToEmpty(settings.getChaoxingPassword());
+        String tasksText = lifeAgentClient.callChaoxingTasks(username, password);
         return ResponseEntity.ok(Map.of("tasks_text", tasksText));
     }
 
@@ -62,6 +84,14 @@ public class LifeController {
 
     @PostMapping("/courses/ai-import")
     public ResponseEntity<Map<String, Object>> aiImportCourses(@RequestBody Map<String, Object> body) {
+        Long userId = UserContext.getCurrentUser();
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "未登录"));
+        }
+        UserSettings settings = userSettingsService.getByUserId(userId);
+        body.put("llm_api_key", nullToEmpty(settings.getLlmApiKey()));
+        body.put("llm_base_url", nullToEmpty(settings.getLlmBaseUrl()));
+        body.put("llm_model", nullToEmpty(settings.getLlmModel()));
         Map<String, Object> result = lifeAgentClient.callAiImportCourses(body);
         return ResponseEntity.ok(result);
     }
@@ -74,6 +104,16 @@ public class LifeController {
 
     @PostMapping("/chat")
     public ResponseEntity<Map<String, Object>> chat(@RequestBody Map<String, Object> body) {
+        Long userId = UserContext.getCurrentUser();
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "未登录"));
+        }
+        UserSettings settings = userSettingsService.getByUserId(userId);
+        body.put("user_settings", Map.of(
+            "llm_api_key", nullToEmpty(settings.getLlmApiKey()),
+            "llm_base_url", nullToEmpty(settings.getLlmBaseUrl()),
+            "llm_model", nullToEmpty(settings.getLlmModel())
+        ));
         Map<String, Object> result = lifeAgentClient.callChat(body);
         return ResponseEntity.ok(result);
     }
@@ -82,5 +122,9 @@ public class LifeController {
     public ResponseEntity<Map<String, Object>> clearCourses() {
         Map<String, Object> result = lifeAgentClient.callClearCourses();
         return ResponseEntity.ok(result);
+    }
+
+    private static String nullToEmpty(String s) {
+        return s != null ? s : "";
     }
 }

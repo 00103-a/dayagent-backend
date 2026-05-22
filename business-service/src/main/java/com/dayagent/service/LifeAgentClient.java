@@ -21,9 +21,17 @@ public class LifeAgentClient {
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> callWeather(String location, Double lat, Double lng) {
+        return callWeather(location, lat, lng, "");
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> callWeather(String location, Double lat, Double lng, String apiKey) {
         StringBuilder url = new StringBuilder(agentBaseUrl + "/weather?location=" + location);
         if (lat != null && lng != null) {
             url.append("&lat=").append(lat).append("&lng=").append(lng);
+        }
+        if (apiKey != null && !apiKey.isEmpty()) {
+            url.append("&api_key=").append(apiKey);
         }
         try {
             Map<String, Object> resp = restTemplate.getForObject(url.toString(), Map.class);
@@ -44,7 +52,17 @@ public class LifeAgentClient {
     }
 
     public String callNews(String goals, String yesterdaySummary) {
-        String url = agentBaseUrl + "/news?goals=" + goals + "&yesterday_summary=" + yesterdaySummary;
+        return callNews(goals, yesterdaySummary, "", "", "", "");
+    }
+
+    public String callNews(String goals, String yesterdaySummary,
+                           String llmKey, String llmBaseUrl, String llmModel, String newsApiKey) {
+        StringBuilder url = new StringBuilder(
+            agentBaseUrl + "/news?goals=" + goals + "&yesterday_summary=" + yesterdaySummary);
+        if (llmKey != null && !llmKey.isEmpty()) url.append("&llm_key=").append(llmKey);
+        if (llmBaseUrl != null && !llmBaseUrl.isEmpty()) url.append("&llm_base_url=").append(llmBaseUrl);
+        if (llmModel != null && !llmModel.isEmpty()) url.append("&llm_model=").append(llmModel);
+        if (newsApiKey != null && !newsApiKey.isEmpty()) url.append("&news_api_key=").append(newsApiKey);
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> resp = restTemplate.getForObject(url, Map.class);
@@ -55,7 +73,15 @@ public class LifeAgentClient {
     }
 
     public String callChaoxingTasks() {
-        String url = agentBaseUrl + "/chaoxing/tasks";
+        return callChaoxingTasks("", "");
+    }
+
+    public String callChaoxingTasks(String username, String password) {
+        StringBuilder url = new StringBuilder(agentBaseUrl + "/chaoxing/tasks");
+        if (username != null && !username.isEmpty()) url.append("?username=").append(username);
+        if (password != null && !password.isEmpty()) {
+            url.append(username != null && !username.isEmpty() ? "&" : "?").append("password=").append(password);
+        }
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> resp = restTemplate.getForObject(url, Map.class);

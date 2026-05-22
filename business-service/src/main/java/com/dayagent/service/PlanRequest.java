@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 发给 Python /generate-plan 的请求体
@@ -30,6 +31,9 @@ public class PlanRequest {
     private Boolean forceRefresh;     // 跳过缓存，强制重新抓取
 
     private List<ParcelInfo> parcels; // 用户未签收的快递列表
+
+    @JsonProperty("user_settings")
+    private Map<String, Object> userSettings;
 
     @Data
     @Builder

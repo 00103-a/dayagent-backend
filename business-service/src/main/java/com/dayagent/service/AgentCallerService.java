@@ -4,6 +4,7 @@ import com.dayagent.entity.Goal;
 import com.dayagent.entity.DailySummary;
 import com.dayagent.entity.DailyPlan;
 import com.dayagent.entity.Parcel;
+import com.dayagent.entity.UserSettings;
 import com.dayagent.mapper.GoalMapper;
 import com.dayagent.mapper.DailySummaryMapper;
 import com.dayagent.mapper.DailyPlanMapper;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 调用 Python Agent 层获取规划
@@ -30,6 +32,7 @@ public class AgentCallerService {
     private final DailyPlanMapper dailyPlanMapper;
     private final ParcelMapper parcelMapper;
     private final ObjectMapper objectMapper;
+    private final UserSettingsService userSettingsService;
 
     /**
      * 查询今天已缓存的规划
@@ -96,13 +99,18 @@ public class AgentCallerService {
                         .build())
                 .toList();
 
-        // 4. 组装请求发到 Python
+        // 4. 获取用户配置的 API Key 等
+        UserSettings settings = userSettingsService.getByUserId(userId);
+        Map<String, Object> settingsMap = userSettingsService.buildSettingsMap(settings);
+
+        // 5. 组装请求发到 Python
         PlanRequest request = PlanRequest.builder()
                 .userId(String.valueOf(userId))
                 .yesterdaySummary(yesterday != null ? yesterday.getContent() : "")
                 .goals(activeGoals.stream().map(Goal::getContent).toList())
                 .location(location)
                 .parcels(parcelInfos)
+                .userSettings(settingsMap)
                 .build();
 
         PlanResponse response = agentHttpClient.callGeneratePlan(request);
