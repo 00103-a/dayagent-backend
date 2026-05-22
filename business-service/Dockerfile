@@ -5,6 +5,7 @@ WORKDIR /build
 
 # 先复制 pom.xml，利用 Docker 缓存层加速重复构建
 COPY pom.xml .
+COPY settings.xml /root/.m2/settings.xml
 RUN mvn dependency:go-offline -B
 
 # 复制源码并打包
