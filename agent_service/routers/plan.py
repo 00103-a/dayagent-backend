@@ -14,9 +14,9 @@ from agent_service.agents.memory import analyze_history
 router = APIRouter()
 
 
-async def _get_course_info(semester_start: str = "") -> str:
+async def _get_course_info(semester_start: str = "", user_id: str = "") -> str:
     """读取本地课表（同步操作，用 async wrapper 方便 gather）"""
-    return get_today_courses(semester_start)
+    return get_today_courses(semester_start, user_id)
 
 
 async def _get_parcel_info(
@@ -76,7 +76,7 @@ async def generate_plan_endpoint(req: PlanRequest) -> PlanResponse:
             username=settings.get("chaoxing_username", ""),
             password=settings.get("chaoxing_password", ""),
         ),
-        _get_course_info(semester_start=settings.get("semester_start", "")),
+        _get_course_info(semester_start=settings.get("semester_start", ""), user_id=req.user_id),
         _get_parcel_info(
             req.parcels,
             kuaidi100_customer=settings.get("kuaidi100_customer", ""),

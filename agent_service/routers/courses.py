@@ -17,8 +17,8 @@ from agent_service.tools.courses import (
     _get_current_week,
     _is_week_active,
 )
-# Background AI processing state (in-memory, resets on restart)
-_ai_state: dict = {"processing": False, "error": None, "done": False, "count": 0}
+# Background AI processing state (in-memory, resets on restart) — now per-user
+_ai_states: dict[str, dict] = {}
 
 COURSE_PARSE_PROMPT = """你是一个大学课表数据解析器。你会收到一批从教务系统课表页面抓取的原始 cell 文本，每个 cell 包含 day（1-7，1=周一）、time_slot（如"第一大节"）和 raw_text（该格子的文本内容）。
 
@@ -90,8 +90,10 @@ async def json_import(payload: dict = Body(...)) -> dict:
 
     Body:
       { "courses": [ { "name": "...", "day": 1, "time_slot": "1-2节",
-                       "location": "...", "teacher": "...", "weeks": "1-16" }, ... ] }
+                       "location": "...", "teacher": "...", "weeks": "1-16" }, ... ],
+        "user_id": "..." }
     """
+    user_id = str(payload.get("user_id", ""))
     raw_courses = payload.get("courses")
     if not raw_courses or not isinstance(raw_courses, list):
         raise HTTPException(status_code=400, detail="缺少 courses 数组")
@@ -117,7 +119,7 @@ async def json_import(payload: dict = Body(...)) -> dict:
             "weeks": str(c.get("weeks", "")),
         }))
 
-    save_courses(courses)
+    save_courses(courses, user_id)
     current_week = _get_current_week()
     return {
         "status": "ok",
@@ -134,10 +136,11 @@ async def ai_import(payload: dict = Body(...), background_tasks: BackgroundTasks
     """AI 智能解析课表原始数据（异步后台处理）
 
     Body:
-      { "cells": [ { "day": 1, "time_slot": "第一大节", "raw_text": "..." }, ... ] }
+      { "cells": [ { "day": 1, "time_slot": "第一大节", "raw_text": "..." }, ... ],
+        "user_id": "..." }
 
     接收 raw cells 后立即返回，AI 解析在后台进行。
-    前端通过 GET /courses/ai-status 查询进度，完成后自动 reload。
+    前端通过 GET /courses/ai-status?user_id=xxx 查询进度，完成后自动 reload。
     """
     cells = payload.get("cells")
     if not cells or not isinstance(cells, list):
@@ -145,7 +148,10 @@ async def ai_import(payload: dict = Body(...), background_tasks: BackgroundTasks
     if len(cells) == 0:
         raise HTTPException(status_code=400, detail="cells 不能为空")
 
-    if _ai_state["processing"]:
+    user_id = str(payload.get("user_id", ""))
+
+    state = _ai_states.get(user_id)
+    if state and state["processing"]:
         return {"status": "busy", "message": "已有解析任务进行中，请稍后再试"}
 
     # Extract optional per-user LLM config
@@ -154,13 +160,10 @@ async def ai_import(payload: dict = Body(...), background_tasks: BackgroundTasks
     llm_model = payload.get("llm_model") or os.getenv("LLM_MODEL", "deepseek-chat")
 
     # Reset state and start background processing
-    _ai_state["processing"] = True
-    _ai_state["done"] = False
-    _ai_state["error"] = None
-    _ai_state["count"] = 0
+    _ai_states[user_id] = {"processing": True, "error": None, "done": False, "count": 0}
 
     background_tasks.add_task(
-        _process_cells_background, cells, llm_key, llm_base, llm_model
+        _process_cells_background, cells, llm_key, llm_base, llm_model, user_id
     )
 
     return {
@@ -171,13 +174,14 @@ async def ai_import(payload: dict = Body(...), background_tasks: BackgroundTasks
 
 
 @router.get("/ai-status")
-async def ai_status() -> dict:
+async def ai_status(user_id: str = Query("")) -> dict:
     """查询后台 AI 解析进度"""
+    state = _ai_states.get(user_id, {})
     return {
-        "processing": _ai_state["processing"],
-        "done": _ai_state["done"],
-        "error": _ai_state["error"],
-        "count": _ai_state["count"],
+        "processing": state.get("processing", False),
+        "done": state.get("done", False),
+        "error": state.get("error"),
+        "count": state.get("count", 0),
     }
 
 
@@ -186,9 +190,11 @@ async def _process_cells_background(
     llm_key: str = "",
     llm_base: str = "",
     llm_model: str = "",
+    user_id: str = "",
 ) -> None:
     """后台任务：调用 LLM 解析 raw cells，保存课程"""
     LLM_TIMEOUT = 90  # seconds per LLM call
+    state = _ai_states.get(user_id, {"processing": True, "error": None, "done": False, "count": 0})
     try:
         # Build user message
         cell_lines = []
@@ -247,11 +253,11 @@ async def _process_cells_background(
                 print(f"[AI-IMPORT] non-stream: {len(content) if content else 0} chars")
 
             if not content:
-                _ai_state["error"] = "AI 返回空响应"
+                state["error"] = "AI 返回空响应"
                 return
         except asyncio.TimeoutError:
             print("[AI-IMPORT] LLM call timed out")
-            _ai_state["error"] = "AI 调用超时，请重试"
+            state["error"] = "AI 调用超时，请重试"
             return
         finally:
             await ai_client.close()
@@ -259,7 +265,7 @@ async def _process_cells_background(
         # Parse LLM JSON response
         courses_raw = _parse_llm_course_json(content)
         if not courses_raw:
-            _ai_state["error"] = "AI 未能解析出有效课程"
+            state["error"] = "AI 未能解析出有效课程"
             return
 
         # Normalize and fill missing fields from raw cells via regex
@@ -297,21 +303,21 @@ async def _process_cells_background(
             }))
 
         if not courses:
-            _ai_state["error"] = "AI 解析结果中无有效课程"
+            state["error"] = "AI 解析结果中无有效课程"
             return
 
-        save_courses(courses)
-        _ai_state["done"] = True
-        _ai_state["count"] = len(courses)
-        print(f"[AI-IMPORT] done: {len(courses)} courses saved")
+        save_courses(courses, user_id)
+        state["done"] = True
+        state["count"] = len(courses)
+        print(f"[AI-IMPORT] done: {len(courses)} courses saved for user={user_id}")
 
     except Exception as e:
         import traceback
         print(f"[AI-IMPORT] background error: {e}")
         traceback.print_exc()
-        _ai_state["error"] = str(e)
+        state["error"] = str(e)
     finally:
-        _ai_state["processing"] = False
+        state["processing"] = False
 
 
 def _parse_llm_course_json(content: str) -> list[dict]:
@@ -425,12 +431,13 @@ def _extract_weeks(raw: str) -> str:
 async def list_courses(
     week: Optional[str] = Query(None, description="周次筛选：'current'=仅本周 或 具体周号如'5'"),
     semester_start: str = Query("", description="学期开始日期，用于计算当前周"),
+    user_id: str = Query("", description="用户 ID"),
 ) -> dict:
     """查看已导入的课表，支持按教学周筛选"""
     import logging
     logger = logging.getLogger("courses")
 
-    courses = load_courses()
+    courses = load_courses(user_id)
 
     # 周次筛选
     current_week = _get_current_week(semester_start)
@@ -455,14 +462,14 @@ async def list_courses(
     return {
         "count": len(courses),
         "courses": courses,
-        "text": get_all_courses_text(),
+        "text": get_all_courses_text(user_id),
         "current_week": current_week,
         "semester_start": os.getenv("SEMESTER_START", ""),
     }
 
 
 @router.delete("")
-async def clear_courses() -> dict:
+async def clear_courses(user_id: str = Query("")) -> dict:
     """清空课表"""
-    save_courses([])
+    save_courses([], user_id)
     return {"status": "ok", "message": "课表已清空"}

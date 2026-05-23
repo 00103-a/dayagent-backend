@@ -70,11 +70,13 @@ public class LifeController {
             @RequestParam(required = false) String week) {
         Long userId = UserContext.getCurrentUser();
         String semesterStart = "";
+        String userIdStr = "";
         if (userId != null) {
             UserSettings settings = userSettingsService.getByUserId(userId);
             semesterStart = nullToEmpty(settings.getSemesterStart());
+            userIdStr = String.valueOf(userId);
         }
-        Map<String, Object> result = lifeAgentClient.callListCourses(week, semesterStart);
+        Map<String, Object> result = lifeAgentClient.callListCourses(week, semesterStart, userIdStr);
         return ResponseEntity.ok(result);
     }
 
@@ -86,7 +88,9 @@ public class LifeController {
 
     @PostMapping("/courses/import")
     public ResponseEntity<Map<String, Object>> jsonImportCourses(@RequestBody Map<String, Object> body) {
-        Map<String, Object> result = lifeAgentClient.callJsonImportCourses(body);
+        Long userId = UserContext.getCurrentUser();
+        String userIdStr = userId != null ? String.valueOf(userId) : "";
+        Map<String, Object> result = lifeAgentClient.callJsonImportCourses(body, userIdStr);
         return ResponseEntity.ok(result);
     }
 
@@ -100,13 +104,16 @@ public class LifeController {
         body.put("llm_api_key", nullToEmpty(settings.getLlmApiKey()));
         body.put("llm_base_url", nullToEmpty(settings.getLlmBaseUrl()));
         body.put("llm_model", nullToEmpty(settings.getLlmModel()));
-        Map<String, Object> result = lifeAgentClient.callAiImportCourses(body);
+        body.put("user_id", String.valueOf(userId));
+        Map<String, Object> result = lifeAgentClient.callAiImportCourses(body, String.valueOf(userId));
         return ResponseEntity.ok(result);
     }
 
     @GetMapping("/courses/ai-status")
     public ResponseEntity<Map<String, Object>> aiStatus() {
-        Map<String, Object> result = lifeAgentClient.callAiStatus();
+        Long userId = UserContext.getCurrentUser();
+        String userIdStr = userId != null ? String.valueOf(userId) : "";
+        Map<String, Object> result = lifeAgentClient.callAiStatus(userIdStr);
         return ResponseEntity.ok(result);
     }
 
@@ -128,7 +135,9 @@ public class LifeController {
 
     @DeleteMapping("/courses")
     public ResponseEntity<Map<String, Object>> clearCourses() {
-        Map<String, Object> result = lifeAgentClient.callClearCourses();
+        Long userId = UserContext.getCurrentUser();
+        String userIdStr = userId != null ? String.valueOf(userId) : "";
+        Map<String, Object> result = lifeAgentClient.callClearCourses(userIdStr);
         return ResponseEntity.ok(result);
     }
 

@@ -10,8 +10,16 @@ const type = ref('weekly')
 
 function handleSubmit() {
   if (!content.value.trim()) return
-  const today = new Date().toISOString().slice(0, 10)
-  emit('submit', { type: type.value, content: content.value.trim(), startDate: today, endDate: '' })
+  const today = new Date()
+  const startDate = today.toISOString().slice(0, 10)
+  const end = new Date(today)
+  if (type.value === 'weekly') {
+    end.setDate(end.getDate() + 7)
+  } else {
+    end.setMonth(end.getMonth() + 1)
+  }
+  const endDate = end.toISOString().slice(0, 10)
+  emit('submit', { type: type.value, content: content.value.trim(), startDate, endDate })
   content.value = ''
 }
 </script>

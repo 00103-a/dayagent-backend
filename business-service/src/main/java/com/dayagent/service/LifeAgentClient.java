@@ -93,11 +93,11 @@ public class LifeAgentClient {
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> callListCourses(String week) {
-        return callListCourses(week, "");
+        return callListCourses(week, "", "");
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> callListCourses(String week, String semesterStart) {
+    public Map<String, Object> callListCourses(String week, String semesterStart, String userId) {
         StringBuilder url = new StringBuilder(agentBaseUrl + "/courses");
         boolean hasParam = false;
         if (week != null && !week.isBlank()) {
@@ -106,6 +106,10 @@ public class LifeAgentClient {
         }
         if (semesterStart != null && !semesterStart.isEmpty()) {
             url.append(hasParam ? "&" : "?").append("semester_start=").append(semesterStart);
+            hasParam = true;
+        }
+        if (userId != null && !userId.isEmpty()) {
+            url.append(hasParam ? "&" : "?").append("user_id=").append(userId);
         }
         try {
             return restTemplate.getForObject(url.toString(), Map.class);
@@ -125,7 +129,10 @@ public class LifeAgentClient {
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> callJsonImportCourses(Map<String, Object> body) {
+    public Map<String, Object> callJsonImportCourses(Map<String, Object> body, String userId) {
+        if (userId != null && !userId.isEmpty()) {
+            body.put("user_id", userId);
+        }
         String url = agentBaseUrl + "/courses/import";
         try {
             return restTemplate.postForObject(url, body, Map.class);
@@ -135,7 +142,10 @@ public class LifeAgentClient {
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> callAiImportCourses(Map<String, Object> body) {
+    public Map<String, Object> callAiImportCourses(Map<String, Object> body, String userId) {
+        if (userId != null && !userId.isEmpty()) {
+            body.put("user_id", userId);
+        }
         String url = agentBaseUrl + "/courses/ai-import";
         try {
             return restTemplate.postForObject(url, body, Map.class);
@@ -145,8 +155,11 @@ public class LifeAgentClient {
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> callAiStatus() {
+    public Map<String, Object> callAiStatus(String userId) {
         String url = agentBaseUrl + "/courses/ai-status";
+        if (userId != null && !userId.isEmpty()) {
+            url += "?user_id=" + userId;
+        }
         try {
             return restTemplate.getForObject(url, Map.class);
         } catch (Exception e) {
@@ -165,8 +178,11 @@ public class LifeAgentClient {
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> callClearCourses() {
+    public Map<String, Object> callClearCourses(String userId) {
         String url = agentBaseUrl + "/courses";
+        if (userId != null && !userId.isEmpty()) {
+            url += "?user_id=" + userId;
+        }
         try {
             restTemplate.delete(url);
             return Map.of("status", "ok", "message", "课表已清空");

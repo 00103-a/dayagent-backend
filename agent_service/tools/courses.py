@@ -13,7 +13,9 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 _DATA_DIR = Path(__file__).parent.parent / "data"
-_COURSES_FILE = _DATA_DIR / "courses.json"
+
+def _courses_file(user_id: str = "") -> Path:
+    return _DATA_DIR / f"courses_{user_id}.json" if user_id else _DATA_DIR / "courses.json"
 
 _WEEKDAY_NAMES = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
@@ -250,30 +252,31 @@ def normalize_course(course: dict) -> dict:
     }
 
 
-def load_courses() -> list[dict]:
-    """读取课表 JSON 文件，返回课程字典列表"""
-    if not _COURSES_FILE.exists():
+def load_courses(user_id: str = "") -> list[dict]:
+    """读取课表 JSON 文件，返回课程字典列表。user_id 为空时回退到 courses.json（兼容旧数据）。"""
+    file = _courses_file(user_id)
+    if not file.exists():
         return []
     try:
-        return json.loads(_COURSES_FILE.read_text(encoding="utf-8"))
+        return json.loads(file.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return []
 
 
-def save_courses(courses: list[dict]) -> None:
-    """保存课程列表到 JSON 文件"""
+def save_courses(courses: list[dict], user_id: str = "") -> None:
+    """保存课程列表到 JSON 文件。user_id 为空时回退到 courses.json（兼容旧数据）。"""
     _ensure_dir()
-    _COURSES_FILE.write_text(
+    _courses_file(user_id).write_text(
         json.dumps(courses, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
 
-def get_today_courses(semester_start: str = "") -> str:
+def get_today_courses(semester_start: str = "", user_id: str = "") -> str:
     """
     返回今日课程的自然语言描述，自动过滤非本周课程。
     """
-    courses = load_courses()
+    courses = load_courses(user_id)
     if not courses:
         return "课表未导入：请先通过 POST /courses/import 导入课表数据"
 
@@ -336,9 +339,9 @@ def get_today_courses(semester_start: str = "") -> str:
     return "\n".join(lines)
 
 
-def get_all_courses_text() -> str:
+def get_all_courses_text(user_id: str = "") -> str:
     """返回完整课表的自然语言描述"""
-    courses = load_courses()
+    courses = load_courses(user_id)
     if not courses:
         return "课表未导入"
 
