@@ -5,6 +5,40 @@
 
 ---
 
+## 零、什么是传感器？为什么我要搞这个？
+
+### 0.1 一句话解释
+
+**传感器 = 电子版的"人类感官"。**
+
+| 你的感官 | 对应传感器 | 干什么 |
+|---------|-----------|--------|
+| 皮肤（感知冷热） | DHT22（温湿度传感器） | 告诉你房间几度、潮不潮 |
+| 眼睛（感知亮暗） | BH1750（光照传感器） | 告诉你桌面亮不亮 |
+| 耳朵 | INMP441（麦克风） | 听你说"樊玉明你好" |
+| 嘴巴 | MAX98357A（功放+喇叭） | AI 回的语音播给你听 |
+
+把传感器连到 ESP32（一个带 WiFi 的微型电脑），数据就能通过 WiFi 飞到你手机上。
+
+### 0.2 为什么搞这个
+
+早上打开 DayAgent App 看规划时，也能一眼看到房间的温湿度和光照——"哦，今天 25°C 湿度 55%，挺舒服"。不用单独买温度计，数据直接嵌入你的每日计划页面。
+
+### 0.3 整条数据链
+
+```
+你房间的空气
+  │
+  ▼
+DHT22（温度传感器）→ ESP32 → WiFi → MQTT消息 → Java后端 → InfluxDB(数据库) → 手机App
+  ↑                 写入      中转     接收解析    存储              读取        显示
+26.5°C
+```
+
+每一步都有对应的代码文件，下面按文件逐个讲。
+
+---
+
 ## 一、架构全景
 
 ```
@@ -724,7 +758,328 @@ const METRICS = [
 
 ---
 
-## 三、后端数据流
+### 9.14 Python 代码：`sensor_analysis.py`（LLM 环境分析）
+
+**这段代码的核心逻辑：把传感器数据拼成一段话 → 发给 DeepSeek → 让它给建议。**
+
+```python
+async def analyze_environment(sensor_readings, courses=None, goals=None) -> str:
+    # ===== 第1步：空数据降级 =====
+    if not sensor_readings:
+        return "暂无环境数据"
+
+    # ===== 第2步：取最新一条 + 计算趋势 =====
+    latest = sensor_readings[-1]        # 列表最后一条 = 最新
+    first = sensor_readings[0]           # 列表第一条 = 最早
+
+    temp_change = latest["temperature"] - first["temperature"]
+    # 如果温度变化超过 1°C，记录趋势
+    if abs(temp_change) > 1:
+        trend = f"温度{'上升' if temp_change > 0 else '下降'}了{abs(temp_change):.1f}°C"
+    # abs() = 绝对值（负数变正数）
+    # :.1f = 格式化小数，保留1位
+
+    # ===== 第3步：拼 context（发给 AI 的"题目"） =====
+    context = f"""
+    当前环境数据：
+    - 温度：{latest['temperature']}°C
+    - 湿度：{latest['humidity']}%
+    - CO2：{latest['co2']}ppm
+    - 光照：{latest['light']}lux
+    趋势：{trend}
+    """
+    # f"..." = f-string，花括号里放变量
+    if courses:
+        context += f"\n今日课程：{courses}"
+    if goals:
+        context += f"\n用户目标：{goals}"
+
+    # ===== 第4步：调 AI =====
+    system_prompt = _load_prompt("sensor_prompt.txt")  # 读 prompt 模板
+    client = _build_client()  # 创建 DeepSeek 客户端
+
+    response = await client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": system_prompt},   # 设定 AI 角色
+            {"role": "user",   "content": context},         # 传感器数据
+        ],
+        temperature=0.7,   # 创意度：0=死板，1=天马行空
+        max_tokens=200,     # 回复最长 200 个 token
+    )
+    return response.choices[0].message.content.strip()
+    # choices[0] = AI 的第一条回复（通常只有一条）
+```
+
+**AI 对话的概念：**
+
+```
+system prompt（角色设定）：
+    "你是一个友好的环境助手。给出1-2条简短建议..."
+
+user message（用户输入）：
+    "当前环境：温度26°C，湿度55%，CO2 1200ppm，光照37lux..."
+
+AI response（AI 回复）：
+    "光照偏低，建议打开台灯保护眼睛。CO2正常，环境舒适。"
+```
+
+这两个 message 发给 DeepSeek，它根据 system prompt 的要求，分析 user 里的数据，给出建议。
+
+**如果 AI 挂了（网络不通 / API 欠费）：**
+
+```python
+except Exception as e:
+    return _rule_based_advice(latest)  # 回退到规则引擎
+```
+
+```python
+def _rule_based_advice(latest):
+    """不调 AI，纯 if/else 的判断"""
+    advice = []
+    if latest.get("co2", 0) > 1500:       advice.append("CO2偏高，建议开窗")
+    if latest.get("temperature", 0) > 30: advice.append("温度偏高，注意防暑")
+    if latest.get("humidity", 0) > 85:    advice.append("湿度较高，有点闷")
+    return "\n".join(advice) if advice else "当前环境状况良好"
+```
+
+**`Prompt 模板`（sensor_prompt.txt）：**
+
+```
+你是一个友好的环境助手。根据传感器数据和用户日程，给出1-2条简短建议。
+
+规则：
+- 每条建议不超过30字
+- 语气温暖、像朋友提醒
+- 结合用户当天的课程和目标给出关联建议
+- 如果没有明显异常，给一条中性鼓励即可
+```
+
+这个模板是教 AI "怎么说话"的——像朋友，简短，结合场景。
+
+---
+
+### 9.15 Java 代码：`MqttConfig.java`（MQTT 连接配置）
+
+**Spring Boot 的 `@Bean` 概念：**
+
+```java
+@Configuration                    // 标记："这是一个配置类"
+public class MqttConfig {
+
+    @Value("${mqtt.broker-url}")  // 从 application.yml 读值
+    private String brokerUrl;     // tcp://localhost:1883
+
+    @Value("${mqtt.client-id}")
+    private String clientId;      // dayagent-spring
+
+    @Bean                          // ⭐ 关键注解："把这个方法返回的对象交给 Spring 管理"
+    public MqttConnectOptions mqttConnectOptions() {
+        MqttConnectOptions options = new MqttConnectOptions();
+        options.setAutomaticReconnect(true);   // 断线自动重连
+        options.setCleanSession(true);         // 每次连接清空旧会话
+        options.setConnectionTimeout(10);       // 连接超时 10 秒
+        options.setKeepAliveInterval(60);       // 每 60 秒发心跳包
+        return options;
+    }
+
+    @Bean
+    public MqttClient mqttClient(MqttConnectOptions options) throws MqttException {
+        // Spring 会自动把上面那个 Bean 传进来（依赖注入）
+        MqttClient client = new MqttClient(brokerUrl, clientId);
+        client.connect(options);  // 用配置好的参数连接 Mosquitto
+        return client;            // 返回已连接的客户端
+    }
+}
+```
+
+**`@Bean` 是什么？**
+
+| 没有 `@Bean` | 有 `@Bean` |
+|-------------|-----------|
+| 每次用到都要 `new MqttClient(...)` | Spring 造好一个，整个程序共享 |
+| 连接配置散落在各处 | 集中在这个配置文件里 |
+| 其他地方自己管理生命周期 | Spring 负责创建、注入、销毁 |
+
+**对象创建流程：**
+
+```
+Spring 启动
+  │
+  ├── 1. 读到 @Configuration → 处理这个类
+  ├── 2. 读到 @Bean mqttConnectOptions() → 调它，建一个 options 对象 → 存起来
+  ├── 3. 读到 @Bean mqttClient(options) → Spring 发现它需要 options
+  │       → 从仓库取第2步存的 options → 传进去 → 建 MqttClient → 存起来
+  └── 4. MqttSubscriber 的构造函数需要 MqttClient
+          → Spring 从仓库取第3步存的 client → 传进去
+```
+
+这就是 **依赖注入**——你不用 `new`，Spring 帮你管理和传递所有对象。
+
+---
+
+### 9.16 TypeScript 代码：`today.tsx`（数据加载 + 缓存）
+
+**核心逻辑 —— 传感器数据加载函数：**
+
+```typescript
+// useCallback = 把函数"缓存"起来，依赖不变就不重建
+const loadSensorCached = useCallback(async (forceRefresh = false) => {
+    // forceRefresh: true=强制刷新跳过缓存, false=优先用缓存
+
+    if (!forceRefresh) {
+        // 1️⃣ 读缓存
+        const cached = await AsyncStorage.getItem(SENSOR_CACHE_KEY);
+        // AsyncStorage = 手机本地存储（类似浏览器的 localStorage）
+
+        if (cached) {
+            const { date, data } = JSON.parse(cached);
+            // JSON.parse = 字符串变回对象
+
+            if (date === todayStr() && data) {
+                setSensorData(data);  // 缓存命中！直接用，不调接口
+                return;               // 提前返回，不走后面的网络请求
+            }
+        }
+    }
+
+    // 2️⃣ 缓存未命中（或强制刷新）→ 调接口
+    const data = await fetchSensorCurrent();   // HTTP GET /api/sensor/current
+    setSensorData(data);                       // 更新界面
+
+    // 3️⃣ 写入缓存（明天打开 App 秒加载）
+    await AsyncStorage.setItem(SENSOR_CACHE_KEY, JSON.stringify({
+        date: todayStr(),   // 日期："2026-6-7"
+        data,               // 数据对象
+    }));
+}, [userId]);  // 依赖数组：userId 变了才重建这个函数
+```
+
+**缓存流程：**
+
+```
+打开 App
+  │
+  ├─ AsyncStorage 里有今天的缓存？
+  │    ├─ 是 → 直接用，秒开，不联网
+  │    └─ 否 → 调接口 → 拿到数据 → 显示 → 存缓存
+  │
+  └─ 用户点 ↻ 刷新？
+       └─ forceRefresh=true → 跳过缓存 → 调接口 → 更新缓存
+```
+
+**刷新函数：**
+
+```typescript
+const handleRefreshSensor = useCallback(async () => {
+    setSensorRefreshing(true);                      // 开始转圈
+
+    await AsyncStorage.removeItem(SENSOR_CACHE_KEY);  // 删旧缓存
+    await AsyncStorage.removeItem(INSIGHTS_CACHE_KEY); // 删洞察缓存
+
+    // Promise.all = 两个请求同时发出，不等先后
+    await Promise.all([
+        loadSensorCached(true),   // 强制刷新传感器
+        loadInsightsCached(),     // 同时刷新 AI 洞察
+    ]);
+
+    setSensorRefreshing(false);                     // 停止转圈
+}, [loadSensorCached, loadInsightsCached]);
+```
+
+**`Promise.all` 为什么快？**
+
+```
+串行（一个接一个）：
+  传感器 2s → AI洞察 3s → 总共 5s
+  ████████████████████████████████████
+
+并行（同时发出）：
+  传感器 2s ┐
+             ├→ 总共 3s（等最慢的那个）
+  AI洞察 3s ┘
+  ██████████████████████
+```
+
+---
+
+### 9.17 TypeScript 代码：`stores/weather.ts`（Zustand 状态管理）
+
+**Zustand = 全局状态，不需要父子组件层层传递：**
+
+```typescript
+import { create } from 'zustand';
+
+// create() = 创建一个"仓库"
+export const useWeatherStore = create<WeatherState>((set) => ({
+    // ===== 状态变量（相当于 Vue 的 ref） =====
+    weather: null,          // 天气数据对象
+    weatherType: 'unknown', // 天气类型：sunny/rainy/cloudy/snowy
+    loading: false,         // 是否正在加载
+    error: null,            // 错误信息
+
+    // ===== 操作方法（相当于 Vue 的 function） =====
+    loadWeather: async (location, lat, lng) => {
+        set({ loading: true, error: null });    // 开始加载
+        try {
+            const weather = await fetchWeather(location, lat, lng);
+            set({
+                weather,
+                weatherType: deriveWeatherType(weather.condition_text),
+                loading: false,
+                error: null,
+            });
+        } catch (e) {
+            set({ loading: false, error: e?.message });
+        }
+    },
+
+    reset: () => set({ weather: null, weatherType: 'unknown' }),
+}));
+```
+
+**为什么用 Zustand？**
+
+```
+不用 Zustand（prop drilling）：
+  App.vue → 传 weatherType → TodayPage → 传 weatherType → SceneBackground
+  每层都要传一遍，烦死
+
+用 Zustand：
+  useWeatherStore() → 任何组件直接读 weatherType
+  App.vue 写入 → SceneBackground 立刻看到，不需要中间层
+```
+
+---
+
+## 十、完整数据流动画
+
+```
+你打开手机 App，进入 Today 页面：
+
+1. today.tsx 执行 loadSensorCached()
+   ├─ 读缓存 → 没缓存
+   └─ GET /api/sensor/current → Java SensorController
+                                    └─ InfluxDBReader.queryLatest()
+                                         └─ Flux 查 InfluxDB
+                                              └─ 返回 {temperature:25.6, humidity:53.5, light:37}
+                                    ← 返回给前端
+   ← setSensorData(data) → SensorPanel 显示 "25.6°C / 53.5% / 37 lux"
+
+2. 同时 loadWeatherCached()
+   └─ GET /api/weather → Python 和风 API
+                         ← 返回 {condition_text:"阴", weather:"温度31℃..."}
+   ← WeatherHero 显示天气卡片
+
+3. 同时 loadInsightsCached()
+   └─ GET /api/environment/insights → Java → Python
+                                          └─ influx_client.py 查 InfluxDB
+                                          └─ sensor_analysis.py → DeepSeek LLM
+                                                                 ← "光照偏低，建议开灯"
+   ← SensorPanel AI洞察区显示文字
+```
+
+---
 
 ### 3.1 MQTT → InfluxDB（写入链）
 
