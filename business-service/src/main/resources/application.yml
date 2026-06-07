@@ -22,3 +22,15 @@ jwt:
 # Python Agent 服务地址
 agent:
   base-url: ${AGENT_BASE_URL:http://localhost:8000}
+
+# MQTT
+mqtt:
+  broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
+  client-id: ${MQTT_CLIENT_ID:dayagent-spring}
+  topics: dayagent/+/sensor/environment
+
+influxdb:
+  url: ${INFLUXDB_URL:http://localhost:8086}
+  token: ${INFLUXDB_TOKEN:dayagent-dev-token}
+  org: ${INFLUXDB_ORG:dayagent}
+  bucket: ${INFLUXDB_BUCKET:sensors}

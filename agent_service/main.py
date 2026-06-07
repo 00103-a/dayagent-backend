@@ -25,7 +25,7 @@ if _env_file.exists():
     load_dotenv(_env_file)
 
 from fastapi import FastAPI
-from agent_service.routers import plan, courses, weather, news, chaoxing, chat
+from agent_service.routers import plan, courses, weather, news, chaoxing, chat, environment, voice
 
 # ═════════════════════════════════════════════════════════════
 # 防御：清除系统级代理环境变量，防止被 httpx/openai 等库自动读取
@@ -90,7 +90,8 @@ app.include_router(weather.router)
 app.include_router(news.router)
 app.include_router(chaoxing.router)
 app.include_router(chat.router)
-
+app.include_router(environment.router)
+app.include_router(voice.router)
 
 @app.get("/health")
 async def health_check():

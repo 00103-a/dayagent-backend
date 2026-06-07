@@ -50,6 +50,7 @@ public class LifeController {
         System.out.println("[LifeController] news: userId=" + userId + ", llmKey=" + (llmKey.isEmpty() ? "EMPTY" : "SET") + ", newsKey=" + (newsKey.isEmpty() ? "EMPTY" : "SET"));
         String newsText = lifeAgentClient.callNews(goals, summary, llmKey, llmBase, llmModel, newsKey);
         return ResponseEntity.ok(Map.of("news_text", newsText));
+        
     }
 
     @GetMapping("/chaoxing/tasks")
@@ -82,15 +83,9 @@ public class LifeController {
 
     @PostMapping("/courses/browser-import")
     public ResponseEntity<Map<String, Object>> importCourses() {
-        Map<String, Object> result = lifeAgentClient.callImportCourses();
-        return ResponseEntity.ok(result);
-    }
-
-    @PostMapping("/courses/import")
-    public ResponseEntity<Map<String, Object>> jsonImportCourses(@RequestBody Map<String, Object> body) {
         Long userId = UserContext.getCurrentUser();
         String userIdStr = userId != null ? String.valueOf(userId) : "";
-        Map<String, Object> result = lifeAgentClient.callJsonImportCourses(body, userIdStr);
+        Map<String, Object> result = lifeAgentClient.callImportCourses(userIdStr);
         return ResponseEntity.ok(result);
     }
 
@@ -138,6 +133,14 @@ public class LifeController {
         Long userId = UserContext.getCurrentUser();
         String userIdStr = userId != null ? String.valueOf(userId) : "";
         Map<String, Object> result = lifeAgentClient.callClearCourses(userIdStr);
+        return ResponseEntity.ok(result);
+    }
+    
+    @GetMapping("/environment/insights")
+    public ResponseEntity<Map<String, Object>> getEnvironmentInsights() {
+        Long userId = UserContext.getCurrentUser();
+        String userIdStr = userId != null ? String.valueOf(userId) : "";
+        Map<String,Object> result = lifeAgentClient.callEnvironmentInsights(userIdStr);
         return ResponseEntity.ok(result);
     }
 

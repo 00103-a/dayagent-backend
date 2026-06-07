@@ -1,4 +1,27 @@
 services:
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: dayagent-mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - mosquitto_data:/mosquitto/data
+    restart: unless-stopped
+  influxdb:
+    image: influxdb:2.7
+    container_name: dayagent-influxdb
+    environment:
+        DOCKER_INFLUXDB_INIT_MODE: setup
+        DOCKER_INFLUXDB_INIT_USERNAME: admin
+        DOCKER_INFLUXDB_INIT_PASSWORD: dayagent123
+        DOCKER_INFLUXDB_INIT_ORG: dayagent
+        DOCKER_INFLUXDB_INIT_BUCKET: sensors
+        DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: dayagent-dev-token
+    ports:
+        - "127.0.0.1:8086:8086"
+    volumes:
+        - influxdb_data:/var/lib/influxdb2
+    restart: unless-stopped
   mysql:
     image: mysql:8.0
     container_name: dayagent-mysql
@@ -50,4 +73,8 @@ services:
 
 volumes:
   mysql_data:
+    driver: local
+  mosquitto_data:
+    driver: local
+  influxdb_data:
     driver: local

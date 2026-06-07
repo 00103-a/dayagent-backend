@@ -119,23 +119,13 @@ public class LifeAgentClient {
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> callImportCourses() {
-        String url = agentBaseUrl + "/courses/browser-import";
-        try {
-            return restTemplate.postForObject(url, null, Map.class);
-        } catch (Exception e) {
-            return Map.of("status", "error", "message", "导入失败：" + e.getMessage());
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public Map<String, Object> callJsonImportCourses(Map<String, Object> body, String userId) {
+    public Map<String, Object> callImportCourses(String userId) {
+        StringBuilder url = new StringBuilder(agentBaseUrl + "/courses/browser-import");
         if (userId != null && !userId.isEmpty()) {
-            body.put("user_id", userId);
+            url.append("?user_id=").append(userId);
         }
-        String url = agentBaseUrl + "/courses/import";
         try {
-            return restTemplate.postForObject(url, body, Map.class);
+            return restTemplate.postForObject(url.toString(), null, Map.class);
         } catch (Exception e) {
             return Map.of("status", "error", "message", "导入失败：" + e.getMessage());
         }
@@ -188,6 +178,20 @@ public class LifeAgentClient {
             return Map.of("status", "ok", "message", "课表已清空");
         } catch (Exception e) {
             return Map.of("status", "error", "message", "清空失败：" + e.getMessage());
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> callEnvironmentInsights(String userId){
+        StringBuilder url = new StringBuilder(agentBaseUrl + "/environment/insights");
+        if(userId != null && !userId.isEmpty()){
+            url.append("?user_id=").append(userId);
+        }
+        try {
+            return restTemplate.getForObject(url.toString(),Map.class);
+        }catch(Exception e){
+            return Map.of("current_readings",null,"alerts",java.util.List.of(),
+            "ai_insights","环境服务暂不可用" + e.getMessage());
         }
     }
 }
