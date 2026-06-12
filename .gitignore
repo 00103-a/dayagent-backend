@@ -28,6 +28,32 @@ agent_service/.env
 # 部署相关（服务器本地文件）
 nginx/nginx.conf.bak
 
+# Mobile (React Native / Expo)
+mobile/.expo/
+mobile/android/
+mobile/ios/
+mobile/dist*/
+mobile/*.jks
+mobile/*.p8
+mobile/*.p12
+mobile/*.key
+mobile/*.mobileprovision
+mobile/expo-env.d.ts
+
+# Claude Code 本地
+.claude/worktrees/
+.claude/settings.local.json
+.superpowers/
+
+# 个人数据（课表、成绩等）
+agent_service/data/courses.json
+
+# 冗余文件（和 CLAUDE.md 功能重复）
+AGENTS.md
+
+# Mobile (单独项目，不在此仓库管理)
+mobile/
+
 # OS
 .DS_Store
 Thumbs.db

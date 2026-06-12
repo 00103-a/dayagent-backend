@@ -17,6 +17,7 @@ from agent_service.tools.courses import (
     _get_current_week,
     _is_week_active,
 )
+from agent_service.tools.jwc import browser_login_and_parse
 # Background AI processing state (in-memory, resets on restart) — now per-user
 _ai_states: dict[str, dict] = {}
 
@@ -84,53 +85,6 @@ def _create_llm_client(
 router = APIRouter(prefix="/courses", tags=["课表管理"])
 
 
-@router.post("/import")
-async def json_import(payload: dict = Body(...)) -> dict:
-    """手动导入课表 JSON 数据
-
-    Body:
-      { "courses": [ { "name": "...", "day": 1, "time_slot": "1-2节",
-                       "location": "...", "teacher": "...", "weeks": "1-16" }, ... ],
-        "user_id": "..." }
-    """
-    user_id = str(payload.get("user_id", ""))
-    raw_courses = payload.get("courses")
-    if not raw_courses or not isinstance(raw_courses, list):
-        raise HTTPException(status_code=400, detail="缺少 courses 数组")
-    if len(raw_courses) == 0:
-        raise HTTPException(status_code=400, detail="courses 不能为空")
-
-    courses = []
-    for i, c in enumerate(raw_courses):
-        if not isinstance(c, dict):
-            raise HTTPException(status_code=400, detail=f"courses[{i}] 应为对象")
-        name = str(c.get("name", "")).strip()
-        if not name:
-            raise HTTPException(status_code=400, detail=f"courses[{i}].name 不能为空")
-        day = c.get("day")
-        if not isinstance(day, int) or day < 1 or day > 7:
-            raise HTTPException(status_code=400, detail=f"courses[{i}].day 应为 1-7 的整数")
-        courses.append(normalize_course({
-            "name": name,
-            "day": day,
-            "time_slot": str(c.get("time_slot", "")),
-            "location": str(c.get("location", "")),
-            "teacher": str(c.get("teacher", "")),
-            "weeks": str(c.get("weeks", "")),
-        }))
-
-    save_courses(courses, user_id)
-    current_week = _get_current_week()
-    return {
-        "status": "ok",
-        "count": len(courses),
-        "courses": courses,
-        "current_week": current_week,
-        "total_weeks": 20,
-        "message": f"成功导入 {len(courses)} 门课程",
-    }
-
-
 @router.post("/ai-import")
 async def ai_import(payload: dict = Body(...), background_tasks: BackgroundTasks = BackgroundTasks()) -> dict:
     """AI 智能解析课表原始数据（异步后台处理）
@@ -182,6 +136,39 @@ async def ai_status(user_id: str = Query("")) -> dict:
         "done": state.get("done", False),
         "error": state.get("error"),
         "count": state.get("count", 0),
+    }
+
+
+@router.post("/browser-import")
+async def browser_import(user_id: str = Query("")) -> dict:
+    """桌面端浏览器自动导入课表（Playwright 自动化）
+
+    启动 Chromium 浏览器，用户在浏览器中手动登录教务系统，
+    登录后自动检测课表页面并解析课程数据。
+
+    Query:
+      user_id: 用户 ID
+    """
+    try:
+        courses = await browser_login_and_parse(timeout_seconds=300)
+    except RuntimeError as e:
+        raise HTTPException(status_code=408, detail=f"导入超时：{e}")
+
+    if not courses:
+        raise HTTPException(status_code=400, detail="未能解析到课程数据，请确认已进入课表页面")
+
+    # Normalize courses before saving
+    normalized = [normalize_course(c) for c in courses]
+    save_courses(normalized, user_id)
+
+    current_week = _get_current_week()
+    return {
+        "status": "ok",
+        "count": len(normalized),
+        "courses": normalized,
+        "current_week": current_week,
+        "total_weeks": 20,
+        "message": f"成功导入 {len(normalized)} 门课程",
     }
 
 

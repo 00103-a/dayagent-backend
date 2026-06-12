@@ -278,7 +278,7 @@ def get_today_courses(semester_start: str = "", user_id: str = "") -> str:
     """
     courses = load_courses(user_id)
     if not courses:
-        return "课表未导入：请先通过 POST /courses/import 导入课表数据"
+        return "课表未导入：请先通过「生活」页面的「导入课表」按钮导入课表数据"
 
     today = date.today()
     current_week = _get_current_week(semester_start)
