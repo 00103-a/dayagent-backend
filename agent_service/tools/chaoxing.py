@@ -243,3 +243,17 @@ def _format_result(courses: list[dict]) -> str:
 
     lines.append("（作业列表暂不可用——学习通新增 enc 授权校验，待后续适配）")
     return "\n".join(lines)
+
+from agent_service.tools.base import Tool, ToolResult
+
+
+class ChaoxingTool(Tool):
+    name = "chaoxing"
+    description = "查询学习通作业与课程信息（当前暂不可用，等待后续浏览器自动化适配）"
+
+    async def run(self, params: dict) -> ToolResult:
+        return ToolResult(
+            ok=False,
+            data={"text": "学习通工具暂不可用，后续将通过浏览器自动化适配"},
+            error="学习通抓取暂未稳定",
+        )

@@ -1,17 +1,33 @@
-"""快递查询工具 - 快递100 API
+"""快递查询工具 - uapis.cn 免费 API
 
-实时查询快递物流状态，支持主流快递公司。
-免费额度：个人注册每天 100 次免费查询，够个人使用。
-
-API 文档：https://api.kuaidi100.com/document/5f0e2c2d77bc4b0061b8ca3b
+API 文档：https://uapis.cn/docs/api-reference/get-misc-tracking-query
 """
 
-import hashlib
-import json
+
 import os
 from typing import Any
-
+import re
 import httpx
+
+_WAITING_PICKUP_PATTERNS = [
+      r"已到达.*(?:驿站|网点|代收点|服务站|菜鸟)",
+      r"已到.*(?:驿站|网点|代收点)",                
+      r"待领取",
+      r"取件码",
+      r"请.*取件",
+      r"凭.*取件",
+      r"快递柜",
+      r"丰巢",
+      r"自提柜",
+      r"存入.*柜",
+      r"妈妈驿站",
+      r"兔喜",
+      r"快递超市",
+      r"摩西管家",
+      r"邻里驿站",
+      r"熊猫快收",
+      r"乐收",
+]
 
 # 快递公司中文名 → 快递100编码 对照表
 _CARRIER_CODE_MAP: dict[str, str] = {
@@ -45,25 +61,20 @@ _CARRIER_CODE_MAP: dict[str, str] = {
     "天天快递": "tiantian",
 }
 
-# 物流状态常量
-STATE_MAP: dict[str, str] = {
-    "0": "在途",
-    "1": "揽件",
-    "2": "疑难",
-    "3": "签收",
-    "4": "退签",
-    "5": "派件",
-    "6": "退回",
-}
+_TRACKING_API = "https://uapis.cn/api/v1/misc/tracking/query"
 
-_KUAIDI100_API = "https://poll.kuaidi100.com/poll/query.do"
+def  _check_waiting_pickup(tracks:list[dict]) -> bool:
+     """从物流轨迹判断是否已到站但未取"""
+     for track in tracks[:3]:
+        text = track.get("context","")
+        for pattern in _WAITING_PICKUP_PATTERNS:
+            if re.search(pattern,text):
+                return True
+     return False
 
 
 def _lookup_carrier_code(carrier: str) -> str | None:
-    """将中文快递公司名转为快递100编码。
 
-    优先从对照表查，其次尝试直接用小写英文码。
-    """
     if not carrier:
         return None
     # 精确匹配
@@ -79,106 +90,90 @@ def _lookup_carrier_code(carrier: str) -> str | None:
     return None
 
 
-def _build_sign(param_json: str, key: str, customer: str) -> str:
-    """构建快递100签名：MD5(param + key + customer) 并转大写"""
-    raw = param_json + key + customer
-    return hashlib.md5(raw.encode("utf-8")).hexdigest().upper()
+#提取函数
+
+def _extract_pickup_code(tracks: list[dict]) -> str:
+    for track in tracks[:3]:
+        text = track.get("context", "")
+        m = re.search(r"取件码[：:为]?\s*([A-Za-z0-9\-]{4,12})","text")
+        if m:
+            return text
+        return ""
+
 
 
 async def query_parcel(
     tracking_no: str,
     carrier: str,
-    customer: str | None = None,
-    key: str | None = None,
 ) -> dict[str, Any]:
-    """查询单条快递物流状态。
-
-    Args:
-        tracking_no: 快递单号
-        carrier: 快递公司名称（中文或编码）
-        customer: 快递100 customer ID，不传则从环境变量 KUAIDI100_CUSTOMER 读取
-        key: 快递100 API key，不传则从环境变量 KUAIDI100_KEY 读取
-
-    Returns:
-        {
-            "tracking_no": "SF1234567890",
-            "carrier": "顺丰",
-            "state": "在途",          # 签收/在途/派件/揽件/疑难/退签/退回
-            "state_code": "0",
-            "is_delivered": false,
-            "latest_context": "...",  # 最新一条物流信息
-            "latest_time": "...",     # 最新一条时间
-            "details": [...]          # 完整物流轨迹（最多保留最近10条）
-        }
-    """
-    customer = customer or os.getenv("KUAIDI100_CUSTOMER", "")
-    key = key or os.getenv("KUAIDI100_KEY", "")
+    """查询单条快递物流状态（uapis.cn 免费 API）。"""
 
     result: dict[str, Any] = {
         "tracking_no": tracking_no,
         "carrier": carrier,
         "state": "查询失败",
         "state_code": "",
+        "pickup_code": "",
         "is_delivered": False,
         "latest_context": "",
         "latest_time": "",
         "details": [],
+        "is_waiting_pickup": False
     }
 
+    params: dict[str,str] = {"tracking_number":tracking_no}
     com = _lookup_carrier_code(carrier)
-    if not com:
-        result["state"] = f"不支持的快递公司：{carrier}"
-        return result
 
-    if not customer or not key:
-        result["state"] = "快递100 API 未配置（缺少 KUAIDI100_CUSTOMER / KUAIDI100_KEY）"
-        return result
-
-    param_data = {"com": com, "num": tracking_no}
-    param_json = json.dumps(param_data, ensure_ascii=False, separators=(",", ":"))
-    sign = _build_sign(param_json, key, customer)
+    if com:
+        params["carrier_code"] = com
 
     async with httpx.AsyncClient(trust_env=False) as client:
         try:
-            resp = await client.post(
-                _KUAIDI100_API,
-                data={
-                    "customer": customer,
-                    "sign": sign,
-                    "param": param_json,
-                },
+            resp = await client.get(
+                _TRACKING_API,
+                params=params,
                 timeout=10.0,
             )
-            if resp.status_code != 200:
-                result["state"] = f"快递100 API 请求失败（HTTP {resp.status_code}）"
+            if resp.status_code == 400:
+                result["state"] = "参数错误"
                 return result
-            resp.raise_for_status()
+            if resp.status_code == 404:
+                result["state"] = "暂无物流信息"
+                return result
+            if resp.status_code != 200:
+                result["state"] = f"API 请求失败(HTTP {resp.status_code})"
+                return result
         except httpx.TimeoutException:
-            result["state"] = "快递100 API 超时"
+            result["state"] = " API 超时"
             return result
         except Exception as e:
-            result["state"] = f"快递100 API 请求异常：{e}"
+            result["state"] = f" API 请求异常：{e}"
             return result
 
     try:
         data = resp.json()
     except Exception:
-        result["state"] = "快递100 返回数据解析失败"
+        result["state"] = " 返回数据解析失败"
         return result
 
-    # 快递100 返回格式：{"message": "ok", "state": "0", "data": [...]}
-    api_state = data.get("state", "")
-    result["state"] = STATE_MAP.get(api_state, f"未知状态({api_state})")
-    result["state_code"] = api_state
-    result["is_delivered"] = (api_state == "3")
+    result["state"] = data.get("status","未知")
+    result["state_code"] = data.get("status_code","")
+    result["is_delivered"] = data.get("is_completed",False)
+    if not result["carrier"]:
+        result["carrier"] = data.get("carrier_name","")
 
-    details: list[dict[str, str]] = data.get("data", [])
-    if details:
+    tracks: list[dict[str, str]] = data.get("tracks", [])
+    if tracks:
         # 只保留最近10条轨迹，倒序展示（最新的在前）
-        result["details"] = details[:10]
-        latest = details[0]
+        result["details"] = tracks[:10]
+        latest = tracks[0]
         result["latest_context"] = latest.get("context", "")
-        result["latest_time"] = latest.get("time", "") or latest.get("ftime", "")
+        result["latest_time"] = latest.get("time", "") 
+    if _check_waiting_pickup(tracks) and not result["is_delivered"]:
+        result["state"] = "待取件" + "（" + result["state"] + "）"
+        result["is_waiting_pickup"] = True
+        result["pickup_code"] = _extract_pickup_code(tracks=tracks)
+    
 
     return result
 
@@ -225,8 +220,6 @@ async def query_parcels_batch(
 
 async def query_parcels_detailed(
     parcels: list[dict[str, str]],
-    customer: str | None = None,
-    key: str | None = None,
 ) -> list[dict[str, Any]]:
     """批量查询快递状态，返回结构化数据。
 
@@ -238,7 +231,42 @@ async def query_parcels_detailed(
         carrier = p.get("carrier", "")
         if not tracking_no:
             continue
-        r = await query_parcel(tracking_no, carrier, customer=customer, key=key)
+        r = await query_parcel(tracking_no, carrier)
         r["remark"] = p.get("remark", "")
         results.append(r)
     return results
+from agent_service.tools.base import Tool,ToolResult
+
+class ParcelTool(Tool):
+    name="parcel"
+    description="查询当前快递状态"
+
+    async def run(self,params:dict) -> ToolResult:
+        parcels = params.get("parcels",[])
+        if not parcels:
+            return ToolResult(
+                ok=True,
+                data={
+                    "summary": "",
+                    "statuses": [],
+                },
+            )
+        try:
+            detailed = await query_parcels_detailed(parcels)
+            summary = await query_parcels_batch(parcels, detailed) 
+            return ToolResult(ok = True, 
+                data={
+                "summary": summary,
+                "statuses": detailed,
+            })
+        except Exception as e:
+            return ToolResult(ok = False, data = {
+                "summary": "",
+                "statuses": [],
+            },
+            error = f"查询失败: {e}" 
+            )
+        
+        
+        
+

@@ -190,3 +190,81 @@ async def _fetch_weather_now(
     except Exception as e:
         logger.error(f"Weather API 调用失败: {url}, error={e}")
         return None
+
+
+# ============================================================
+# 新外壳：把上面的逻辑包装成"统一接口工具"
+# ============================================================
+# 阅读顺序：先看下面 6 行，理解 WeatherTool 长什么样；
+#          再回来看它如何复用前面的 fetch_weather。
+# ============================================================
+
+from typing import Optional
+
+# 从同目录的 base.py 里拿"操作手册"（Tool 模板 + ToolResult 形状）。
+from agent_service.tools.base import Tool, ToolResult
+
+
+class WeatherTool(Tool):
+    """天气工具，遵守 base.py 里的 Tool 契约。
+
+    它的"干活逻辑"全部复用前面已经写好的 fetch_weather 函数，
+    这个类只负责：把外部传进来的统一参数（params dict）翻译成
+    fetch_weather 需要的参数，再把 fetch_weather 的返回包装成 ToolResult。
+
+    类比：fetch_weather 是一个熟练工，懂怎么查天气；
+         WeatherTool 是他的工服和工牌，让他符合公司规范，
+         别人（工作流/LLM）一眼就能认出他、按统一方式指挥他。
+    """
+
+    # ---- 自我介绍（为以后 agent 化埋的种子）----
+    name = "weather"
+    description = "查询某城市的实时天气，包括温度、风力、天气状况等。"
+
+    # ---- 干活的那个动作（契约要求叫 run，参数要求是 dict）----
+    async def run(self, params: dict) -> ToolResult:
+        """params 里期待这些 key（缺了会用默认值兜底）：
+            - location  : 城市名，如 "南昌"        （必需）
+            - lat       : 经度，可选
+            - lng       : 纬度，可选
+            - api_key   : 和风天气 API Key，可选（缺时走环境变量）
+            - host      : API host，可选
+        """
+
+        # ---- Step 1: 从 params 这个 dict 里"取"参数 ----
+        # params.get(key, default) 的含义：
+        #   如果 params 里有这个 key，就取它的值；没有就用 default。
+        # 这比位置参数健壮——调用方忘了传 api_key 也不会报错，只是走环境变量。
+        location = params.get("location", "")
+        lat: Optional[float] = params.get("lat")
+        lng: Optional[float] = params.get("lng")
+        api_key: str = params.get("api_key", "")
+        weather_host: str = params.get("host", "")
+
+        # ---- Step 2: 调用原有逻辑（一行没动）----
+        # 这里直接复用前面定义的 fetch_weather 函数。
+        # 这就是"外壳"的含义——它自己不干活，它负责把活派给会干的人。
+        try:
+            raw = await fetch_weather(
+                location=location,
+                lat=lat,
+                lng=lng,
+                api_key=api_key,
+                weather_host=weather_host,
+            )
+        except Exception as e:
+            # ---- 异常也统一包装：绝不让一个工具的崩溃拖垮整个工作流 ----
+            # WHY 这样做：以前 fetch_weather 出错会直接抛异常，
+            # 上层（routers/plan.py 的 gather）一旦有一个工具炸了，整个 gather 就炸了。
+            # 包装成 ToolResult(ok=False, error=...) 后，上层可以选择"跳过这个工具继续跑"。
+            return ToolResult(ok=False, data={}, error=f"天气查询异常: {e}")
+
+        # ---- Step 3: 把原始返回包装成统一的 ToolResult ----
+        # fetch_weather 成功时返回 dict，失败时也返回 dict（但 condition_text 为空）。
+        # 我们用 condition_text 是否为空，作为"真正成功"的判断依据。
+        is_ok = bool(raw.get("condition_text"))
+        return ToolResult(
+            ok=is_ok,
+            data=raw,
+            error="" if is_ok else "天气数据为空或未配置 API Key",
+        )

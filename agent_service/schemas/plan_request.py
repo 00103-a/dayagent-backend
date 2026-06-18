@@ -31,6 +31,8 @@ class ParcelStatus(BaseModel):
     remark: str = ""
     state: str
     is_delivered: bool = False
+    pickup_code: str = ""              # ← 加这行
+    is_waiting_pickup: bool = False
     latest_context: str = ""
     latest_time: str = ""
     details: list[dict[str, str]] = Field(default_factory=list, description="完整物流轨迹")

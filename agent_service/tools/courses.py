@@ -369,3 +369,23 @@ def get_all_courses_text(user_id: str = "") -> str:
                 parts.append(f" [{c['weeks']}]")
             lines.append("".join(parts))
     return "\n".join(lines)
+
+from agent_service.tools.base import Tool,ToolResult
+
+
+class CourseTool(Tool):
+    name = "course"
+    description = "查询今天的课表"
+
+    async def run(self, params: dict) -> ToolResult:
+        semester_start = params.get("semester_start","")
+        user_id = params.get("user_id","")
+    
+        try:
+            raw = get_today_courses(
+                semester_start=semester_start,
+                user_id=user_id)
+        except Exception as e:
+            return ToolResult(ok = False, data={}, error=f"今日课表查询失败: {e}")
+    
+        return ToolResult(ok = True, data = {"text":raw})
