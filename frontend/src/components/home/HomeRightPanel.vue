@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { fetchWeather } from '@/api/weather'
 import { weatherType, weatherShort as sharedWeatherShort, weatherTemp as sharedWeatherTemp } from '@/stores/weatherState'
+import { deriveWeatherType, formatWeather } from '@/utils/weather'
 
 const props = defineProps({
   weatherText: { type: String, default: '' },
@@ -18,22 +19,6 @@ const props = defineProps({
 const weatherRefreshing = ref(false)
 const localWeatherText = ref('')
 const localWeatherTemp = ref(null)
-
-function deriveWeatherType(conditionText) {
-  if (!conditionText) return 'sunny'
-  if (conditionText.includes('雪')) return 'snowy'
-  if (conditionText.includes('雨')) return 'rainy'
-  if (conditionText.includes('云') || conditionText.includes('阴')) return 'cloudy'
-  if (conditionText.includes('晴')) return 'sunny'
-  return 'sunny'
-}
-
-function formatWeather(raw) {
-  if (!raw) return { text: '', temp: null }
-  let text = raw.replace(/^[^\s]+今日天气[：:]\s*/, '')
-  const tm = text.match(/(\d{1,2})°/)
-  return { text: text || raw, temp: tm ? parseInt(tm[1]) : null }
-}
 
 async function refreshWeather() {
   weatherRefreshing.value = true

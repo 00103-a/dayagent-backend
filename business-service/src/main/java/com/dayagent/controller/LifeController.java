@@ -112,22 +112,6 @@ public class LifeController {
         return ResponseEntity.ok(result);
     }
 
-    @PostMapping("/chat")
-    public ResponseEntity<Map<String, Object>> chat(@RequestBody Map<String, Object> body) {
-        Long userId = UserContext.getCurrentUser();
-        if (userId == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "未登录"));
-        }
-        UserSettings settings = userSettingsService.getByUserId(userId);
-        body.put("user_settings", Map.of(
-            "llm_api_key", nullToEmpty(settings.getLlmApiKey()),
-            "llm_base_url", nullToEmpty(settings.getLlmBaseUrl()),
-            "llm_model", nullToEmpty(settings.getLlmModel())
-        ));
-        Map<String, Object> result = lifeAgentClient.callChat(body);
-        return ResponseEntity.ok(result);
-    }
-
     @DeleteMapping("/courses")
     public ResponseEntity<Map<String, Object>> clearCourses() {
         Long userId = UserContext.getCurrentUser();
@@ -148,3 +132,4 @@ public class LifeController {
         return s != null ? s : "";
     }
 }
+

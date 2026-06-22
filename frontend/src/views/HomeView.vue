@@ -8,6 +8,7 @@ import FocusList from '@/components/home/FocusList.vue'
 import CourseTimeline from '@/components/home/CourseTimeline.vue'
 import HomeRightPanel from '@/components/home/HomeRightPanel.vue'
 import HomeSkeleton from '@/components/home/HomeSkeleton.vue'
+import ChatInline from '@/components/home/ChatInline.vue'
 
 const userStore = useUserStore()
 const {
@@ -68,6 +69,13 @@ onMounted(() => {
                 :course-rows="todayCourseRows"
                 :has-courses="hasCourses"
                 :loading="coursesLoading"
+              />
+            </div>
+
+            <div :class="animateEnter ? 'anim-enter anim-enter--4' : ''">
+              <ChatInline
+                :plan="planData"
+                :focus-items="focusItems"
               />
             </div>
 
@@ -226,3 +234,4 @@ onMounted(() => {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
+

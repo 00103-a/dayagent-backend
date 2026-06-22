@@ -27,3 +27,8 @@ def get_tool_descriptions() -> list[dict[str, str]]:
         }
         for tool in TOOLS.values()
     ]
+def format_tool_descriptions() -> str:
+    return "\n".join(
+        f"- {item['name']}: {item['description']}"
+        for item in get_tool_descriptions()
+    )

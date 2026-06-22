@@ -6,6 +6,7 @@ import { fetchNews } from '@/api/news'
 import { getParcels } from '@/api/parcel'
 import { useUserStore } from '@/stores/user'
 import { weatherType, weatherShort as sharedWeatherShort, weatherTemp as sharedWeatherTemp } from '@/stores/weatherState'
+import { deriveWeatherType, formatWeather } from '@/utils/weather'
 
 function todayDayIndex() {
   const d = new Date().getDay()
@@ -15,32 +16,6 @@ function todayDayIndex() {
 function todayDateStr() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-/**
- * Strip "XX今日天气：" prefix, return short weather + temp.
- */
-function formatWeather(raw) {
-  if (!raw) return { text: '', temp: null }
-  let text = raw.replace(/^[^\s]+今日天气[：:]\s*/, '')
-  const tm = text.match(/(\d{1,2})°/)
-  return { text: text || raw, temp: tm ? parseInt(tm[1]) : null }
-}
-
-/**
- * 从和风天气 condition_text 推导场景天气类型。
- * 映射规则（数据驱动）：
- *   包含"雪" → snowy / 包含"雨" → rainy
- *   包含"云"/"阴" → cloudy / 包含"晴" → sunny
- * conditionText 可以为空，此时返回 'sunny'
- */
-function deriveWeatherType(conditionText) {
-  if (!conditionText) return 'sunny'
-  if (conditionText.includes('雪')) return 'snowy'
-  if (conditionText.includes('雨')) return 'rainy'
-  if (conditionText.includes('云') || conditionText.includes('阴')) return 'cloudy'
-  if (conditionText.includes('晴')) return 'sunny'
-  return 'sunny'
 }
 
 /**
@@ -201,7 +176,7 @@ export function useHomeData() {
       }
 
       if (!data) {
-        data = await fetchPlan(userStore.userId, location.value, true)
+        data = await fetchPlan(userStore.userId, location.value, forceRefresh)
         cacheSet(cacheKey, data)
       }
 

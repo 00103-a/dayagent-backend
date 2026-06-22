@@ -28,6 +28,12 @@ public class PlanResponse {
         @JsonProperty("is_delivered")
         private Boolean isDelivered;
 
+        @JsonProperty("pickup_code")
+        private String pickupCode;
+
+        @JsonProperty("is_waiting_pickup")
+        private Boolean isWaitingPickup;
+
         @JsonProperty("latest_context")
         private String latestContext;
 

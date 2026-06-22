@@ -1,117 +1,28 @@
-"""
-对话 AI 助手 — 通用聊天端点
-"""
-import os
-from pathlib import Path
+"""AI chat endpoint.
 
-import httpx
+Router 只处理 HTTP 形状，不写 Agent 逻辑。
+真正的“分析需求/收集上下文/选工具/生成回复”都放在 workflow 里。
+"""
 from fastapi import APIRouter, Body
-from openai import AsyncOpenAI
+
+from agent_service.workflows.chat import run_chat_workflow
 
 router = APIRouter(prefix="/chat", tags=["AI 对话"])
-
-_PROMPT_DIR = Path(__file__).parent.parent / "prompts"
-
-SYSTEM_PROMPT = """你是一个贴心的个人 AI 助手，名叫 DayAgent。你的风格是：
-- 温暖、鼓励、像朋友一样自然
-- 回复简洁（通常 2-5 句），不要长篇大论
-- 如果用户提到目标、计划、时间管理，给出具体可行的建议
-- 如果用户情绪低落，先共情再鼓励
-- 用中文回复，语气轻松不做作"""
-
-
-def _build_http_client() -> httpx.AsyncClient:
-    proxy = os.getenv("LLM_PROXY", "")
-    kwargs: dict = {
-        "timeout": httpx.Timeout(60.0, connect=15.0),
-        "follow_redirects": True,
-        "trust_env": False,
-    }
-    if proxy:
-        kwargs["proxy"] = proxy
-        kwargs["verify"] = False
-    return httpx.AsyncClient(**kwargs)
-
-
-def _create_llm_client(
-    api_key: str = "",
-    base_url: str = "",
-) -> AsyncOpenAI:
-    http_client = _build_http_client()
-    return AsyncOpenAI(
-        base_url=base_url or os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
-        api_key=api_key or os.getenv("LLM_API_KEY", "sk-placeholder"),
-        http_client=http_client,
-    )
 
 
 @router.post("")
 async def chat(payload: dict = Body(...)) -> dict:
-    """通用 AI 对话
+    """Agent-style chat.
 
-    Body:
-      { "userId": 1, "message": "...", "context": { ... } }
+    Java passes trusted user context and user settings. Python decides how to
+    analyze the request and whether any agent tools are useful for the reply.
     """
-    user_id = payload.get("userId", 1)
-    message = (payload.get("message") or "").strip()
-    context = payload.get("context")
-    user_settings = payload.get("user_settings", {})
-
-    if not message:
-        return {"reply": "你想聊什么？"}
-
-    llm_key = user_settings.get("llm_api_key", "")
-    if not llm_key:
-        return {"reply": "请先在设置中配置 DeepSeek API Key"}
-
-    # 构建用户消息（可选包含上下文）
-    user_content = message
-    if context and isinstance(context, dict):
-        ctx_parts = []
-        active_goals = context.get("activeGoals")
-        if isinstance(active_goals, list) and active_goals:
-            goals_text = "\n".join(
-                f"- [{g.get('type', '')}] {g.get('content', '')}"
-                for g in active_goals[:5]
-                if isinstance(g, dict)
-            )
-            if goals_text:
-                ctx_parts.append(f"用户当前目标：\n{goals_text}")
-
-        yesterday = context.get("yesterday")
-        if yesterday and isinstance(yesterday, str):
-            ctx_parts.append(f"用户昨日总结：{yesterday}")
-
-        if ctx_parts:
-            user_content = f"{message}\n\n背景信息：\n" + "\n".join(ctx_parts)
-
-    model = user_settings.get("llm_model") or os.getenv("LLM_MODEL", "deepseek-chat")
-    base_url = user_settings.get("llm_base_url", "")
-    ai_client = _create_llm_client(api_key=llm_key, base_url=base_url)
-
-    try:
-        stream = await ai_client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_content},
-            ],
-            temperature=0.8,
-            max_tokens=800,
-            stream=True,
-        )
-        content = ""
-        async for chunk in stream:
-            delta = chunk.choices[0].delta.content if chunk.choices else None
-            if delta:
-                content += delta
-
-        if not content:
-            return {"reply": "嗯...让我想想该怎么说。"}
-
-        return {"reply": content.strip()}
-
-    except Exception as e:
-        import logging
-        logging.getLogger("chat").error(f"LLM 调用失败: {e}")
-        return {"reply": "我暂时无法回复，请稍后再试。"}
+    result = await run_chat_workflow(payload)
+    # 返回 reply 之外的解释字段，给前端显示“参考了什么/用了什么工具”。
+    # 这能帮助我们判断它是否真的像 Agent，而不是普通聊天框。
+    return {
+        "reply": result.reply,
+        "need_analysis": result.need_analysis,
+        "used_context": result.used_context,
+        "tool_results": result.tool_results,
+    }

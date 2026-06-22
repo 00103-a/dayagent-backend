@@ -39,6 +39,7 @@ const navItems = [
   { name: 'Summary', label: '日记', path: '/summary' },
   { name: 'Goals', label: '目标', path: '/goals' },
   { name: 'Life', label: '生活', path: '/life' },
+  { name: 'Chat', label: '对话', path: '/chat' },
   { name: 'Settings', label: '设置', path: '/settings' },
 ]
 
@@ -569,3 +570,4 @@ const activeNav = computed(() => route.name)
   50% { box-shadow: 0 0 10px var(--orange), 0 0 20px rgba(224, 112, 48, 0.3); }
 }
 </style>
+
