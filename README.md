@@ -103,7 +103,9 @@ cd dayagent-backend
 
 ```env
 # 必填
-DEEPSEEK_API_KEY=你的DeepSeek密钥
+LLM_API_KEY=你的DeepSeek密钥
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-chat
 QWEATHER_KEY=你的和风天气key
 JWC_USERNAME=教务系统账号
 JWC_PASSWORD=教务系统密码

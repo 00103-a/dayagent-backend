@@ -14,8 +14,8 @@ def _load_prompt(filename: str) -> str:
 def _build_client() -> AsyncOpenAI:
     proxy = os.getenv("LLM_PROXY","")
     kwargs = {
-        "api_key": os.getenv("DEEPSEEK_API_KEY", "sk-xxx"),
-        "base_url": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
+        "api_key": os.getenv("LLM_API_KEY", "sk-placeholder"),
+        "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
         "http_client": httpx.AsyncClient(
               timeout=httpx.Timeout(60.0, connect=15.0),
               follow_redirects=True,
@@ -59,7 +59,7 @@ async def analyze_environment(
     client = _build_client()
     try:
         response = await client.chat.completions.create(
-            model = os.getenv("DEEPSEEK_MODEL","deepseek-chat"),
+            model = os.getenv("LLM_MODEL","deepseek-chat"),
             messages=[
                 {"role":"system","content":system_prompt},
                 {"role":"user","content":context}

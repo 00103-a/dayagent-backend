@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import { sendChat } from '@/api/chat'
 
 const props = defineProps({
+  // Today 页传入的只是当前页面已有的轻量预览，帮助后端兼容页面场景。
+  // Agent 真正使用的完整上下文仍由 Java ChatService 查询。
   plan: { type: Object, default: null },
   focusItems: { type: Array, default: () => [] },
 })
@@ -19,6 +21,7 @@ async function ask() {
   const text = input.value.trim()
   if (!text || loading.value) return
 
+  // 内嵌入口不保存完整聊天历史，只回答“此刻我该怎么办”这种短问题。
   loading.value = true
   error.value = ''
   reply.value = ''
@@ -26,6 +29,7 @@ async function ask() {
 
   try {
     const res = await sendChat(text, {
+      // 这些字段只是页面补充信息；后端不会信任它们作为唯一上下文来源。
       today_plan_preview: props.plan?.plan || '',
       focus_items: props.focusItems,
     })

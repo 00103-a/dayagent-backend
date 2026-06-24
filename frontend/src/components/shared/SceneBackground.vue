@@ -94,37 +94,6 @@ function drawSky(ctx, period, weather) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Celestial body
-   ═══════════════════════════════════════════════════════════ */
-function drawCelestial(ctx, period) {
-  const mx = 260, my = 30
-  ctx.imageSmoothingEnabled = false
-
-  if (period === 'night') {
-    ctx.fillStyle = '#d8d0c0'
-    ctx.fillRect(mx, my, 8, 8)
-    ctx.fillStyle = '#b8b0a0'
-    ctx.fillRect(mx + 2, my + 2, 2, 2)
-    ctx.fillRect(mx + 5, my + 4, 1, 1)
-    ctx.fillRect(mx + 3, my + 5, 2, 1)
-    ctx.fillStyle = 'rgba(200, 190, 170, 0.06)'
-    ctx.fillRect(mx - 4, my - 4, 16, 16)
-  } else if (period === 'dawn' || period === 'dusk') {
-    const sx = mx, sy = my + 10
-    ctx.fillStyle = '#e07030'
-    ctx.fillRect(sx, sy, 8, 8)
-    ctx.fillStyle = '#d08030'
-    ctx.fillRect(sx + 2, sy + 2, 4, 4)
-    ctx.fillStyle = '#c87828'
-    ctx.fillRect(sx + 3, sy + 3, 2, 2)
-    ctx.fillStyle = 'rgba(224, 112, 48, 0.06)'
-    ctx.fillRect(sx - 6, sy - 6, 20, 20)
-    ctx.fillStyle = 'rgba(224, 112, 48, 0.03)'
-    ctx.fillRect(sx - 12, sy - 12, 32, 32)
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════
    Stars
    ═══════════════════════════════════════════════════════════ */
 const starSeeds = Array.from({ length: 40 }, () => ({
@@ -144,155 +113,6 @@ function drawStars(ctx, period, tick) {
       ctx.fillRect(s.x + 1, s.y, 1, 1)
     }
   }
-}
-
-/* ═══════════════════════════════════════════════════════════
-   City silhouette
-   ═══════════════════════════════════════════════════════════ */
-const buildings = [
-  { x: 0, w: 30, h: 22 }, { x: 34, w: 20, h: 30 }, { x: 58, w: 28, h: 18 },
-  { x: 90, w: 16, h: 38 }, { x: 110, w: 24, h: 26 }, { x: 138, w: 32, h: 20 },
-  { x: 174, w: 18, h: 34 }, { x: 196, w: 26, h: 24 }, { x: 226, w: 22, h: 30 },
-  { x: 252, w: 30, h: 16 }, { x: 286, w: 18, h: 28 }, { x: 300, w: 20, h: 20 },
-]
-
-const litWindows = []
-for (let i = 0; i < 25; i++) {
-  const b = buildings[Math.floor(Math.random() * buildings.length)]
-  litWindows.push({
-    bx: b.x, bw: b.w, bh: b.h,
-    wx: 3 + Math.floor(Math.random() * Math.max(1, b.w - 6)),
-    wy: 4 + Math.floor(Math.random() * Math.max(1, b.h - 10)),
-    phase: Math.random() * Math.PI * 2,
-  })
-}
-
-function drawCity(ctx, tick) {
-  const groundY = H - 28
-  for (const b of buildings) {
-    ctx.fillStyle = '#0c0a08'
-    ctx.fillRect(b.x, groundY - b.h, b.w, b.h)
-  }
-  for (const lw of litWindows) {
-    const alpha = 0.15 + 0.25 * (0.5 + 0.5 * Math.sin(tick * 0.03 + lw.phase))
-    ctx.fillStyle = `rgba(224,180,120,${alpha.toFixed(2)})`
-    ctx.fillRect(lw.bx + lw.wx, groundY - lw.bh + lw.wy, 2, 2)
-  }
-  // Ground
-  ctx.fillStyle = '#0a0806'
-  ctx.fillRect(0, groundY, W, H - groundY)
-
-  // City darkening overlay - darken to blend with content
-  ctx.fillStyle = 'rgba(4, 3, 2, 0.50)'
-  ctx.fillRect(0, groundY - 40, W, 40 + H - groundY)
-}
-
-/* ═══════════════════════════════════════════════════════════
-   Street lamp
-   ═══════════════════════════════════════════════════════════ */
-function drawLamp(ctx, tick) {
-  const lx = 100, baseY = H - 28
-  const poleH = 34
-  ctx.fillStyle = '#1a1815'
-  ctx.fillRect(lx + 1, baseY - poleH, 2, poleH)
-  ctx.fillStyle = '#2a2820'
-  ctx.fillRect(lx - 1, baseY - poleH - 3, 6, 3)
-  const glowAlpha = 0.04 + 0.015 * Math.sin(tick * 0.02)
-  ctx.fillStyle = `rgba(224,160,100,${glowAlpha.toFixed(3)})`
-  ctx.fillRect(lx - 10, baseY - poleH - 14, 24, 24)
-  ctx.fillStyle = `rgba(224,160,80,${(glowAlpha * 1.8).toFixed(3)})`
-  ctx.fillRect(lx - 4, baseY - poleH - 8, 12, 12)
-  ctx.fillStyle = '#e0b870'
-  ctx.fillRect(lx + 1, baseY - poleH - 2, 2, 2)
-}
-
-/* ═══════════════════════════════════════════════════════════
-   Window frame
-   ═══════════════════════════════════════════════════════════ */
-function drawWindow(ctx) {
-  ctx.fillStyle = '#0a0806'
-  ctx.fillRect(0, 0, 18, H)
-  ctx.fillStyle = '#0c0a07'
-  for (let y = 0; y < H; y += 10) ctx.fillRect(14, y, 4, 6)
-  ctx.fillStyle = '#0e0c08'
-  ctx.fillRect(0, 0, 6, H)
-
-  ctx.fillStyle = '#0a0806'
-  ctx.fillRect(W - 18, 0, 18, H)
-  ctx.fillStyle = '#0c0a07'
-  for (let y = 0; y < H; y += 10) ctx.fillRect(W - 18, y, 4, 6)
-  ctx.fillStyle = '#0e0c08'
-  ctx.fillRect(W - 6, 0, 6, H)
-
-  ctx.fillStyle = '#0a0806'
-  ctx.fillRect(0, 0, W, 8)
-  ctx.fillStyle = '#0c0a07'
-  ctx.fillRect(0, 0, W, 4)
-
-  ctx.fillStyle = '#0c0a08'
-  ctx.fillRect(0, H - 10, W, 10)
-  ctx.fillStyle = '#0e0c08'
-  ctx.fillRect(0, H - 10, W, 3)
-}
-
-/* ═══════════════════════════════════════════════════════════
-   Pixel cat — round sitting pose, 2×2 ears, pupils, tail wrap
-   0=empty 1=#e07030 2=#c05820 3=#fff(eye) 4=#080604(pupil)
-   ═══════════════════════════════════════════════════════════ */
-const CAT_W = 16
-const CAT_H = 16
-const catPixels = [
-  // 0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
-  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ], // row 0
-  [ 0, 0, 0, 0, 0, 2, 2, 0, 0, 2, 2, 0, 0, 0, 0, 0 ], // row 1  rounded ear tops
-  [ 0, 0, 0, 0, 1, 1, 1, 2, 2, 1, 1, 1, 0, 0, 0, 0 ], // row 2  ears meet head
-  [ 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0 ], // row 3  head top (wide, round)
-  [ 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0 ], // row 4  head
-  [ 0, 0, 0, 1, 1, 3, 4, 1, 1, 3, 4, 1, 1, 0, 0, 0 ], // row 5  eyes: white(3)+pupil(4)
-  [ 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0 ], // row 6  head
-  [ 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0 ], // row 7  chin (narrower)
-  [ 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0 ], // row 8  neck
-  [ 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0 ], // row 9  body top
-  [ 0, 0, 0, 0, 2, 1, 1, 1, 1, 1, 1, 2, 0, 0, 0, 0 ], // row A  body (dark sides)
-  [ 0, 0, 0, 0, 2, 1, 1, 1, 1, 1, 1, 2, 0, 0, 0, 0 ], // row B  body
-  [ 0, 0, 0, 0, 0, 1, 2, 0, 0, 2, 1, 0, 0, 0, 0, 0 ], // row C  front legs
-  [ 0, 0, 0, 0, 0, 2, 1, 0, 0, 1, 2, 0, 0, 0, 0, 0 ], // row D  back paws
-  [ 0, 0, 0, 0, 0, 0, 2, 1, 1, 1, 2, 0, 0, 0, 0, 0 ], // row E  tail base (wraps right)
-  [ 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0 ], // row F  tail tip
-]
-
-function drawCat(ctx, tick) {
-  const px = 2
-  const cx = Math.floor(W / 2 - (CAT_W * px) / 2)
-  const cy = H - 10 - CAT_H * px
-
-  // Idle bob: 1.2s cycle, translateY 0 → -2px visual
-  const idlePhase = tick * Math.PI / 6
-  const bobY = Math.floor((Math.cos(idlePhase) - 1) / 2)
-
-  const blinkPhase = (tick + 11) % 200
-
-  for (let row = 0; row < CAT_H; row++) {
-    for (let col = 0; col < CAT_W; col++) {
-      const v = catPixels[row][col]
-      if (v === 0) continue
-      const x = cx + col * px
-      const y = cy + row * px + bobY
-
-      if (v === 1) ctx.fillStyle = '#e07030'
-      else if (v === 2) ctx.fillStyle = '#c05820'
-      else if (v === 3) ctx.fillStyle = (blinkPhase > 196) ? '#c05820' : '#ffffff'
-      else if (v === 4) ctx.fillStyle = (blinkPhase > 196) ? '#c05820' : '#080604'
-
-      ctx.fillRect(x, y, px, px)
-    }
-  }
-
-  // Lamp glow wash
-  const glowX = cx - 4
-  const glowY = cy - 2 + bobY
-  ctx.fillStyle = 'rgba(224, 160, 80, 0.05)'
-  ctx.fillRect(glowX, glowY, CAT_W * px + 8, CAT_H * px + 6)
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -372,14 +192,9 @@ function render() {
   ctx.clearRect(0, 0, W, H)
 
   drawSky(ctx, period, weather)
-  drawCelestial(ctx, period)
   drawStars(ctx, period, tick)
   if (weather === 'cloudy') drawClouds(ctx, tick)
-  drawCity(ctx, tick)
-  drawLamp(ctx, tick)
   if (weather === 'snowy') drawSnow(ctx)
-  drawWindow(ctx)
-  drawCat(ctx, tick)
   drawVignette(ctx)
 }
 
@@ -425,48 +240,6 @@ function drawRain(ctx, w, h) {
   }
 }
 
-/* ── Window water drops (on rain canvas, drawn first) ────── */
-const windowDrops = []
-const WINDOW_DROP_COUNT = 10
-
-function initWindowDrops(w, h) {
-  windowDrops.length = 0
-  for (let i = 0; i < WINDOW_DROP_COUNT; i++) {
-    windowDrops.push({
-      x: w * 0.05 + Math.random() * w * 0.9,  // spread across window
-      y: Math.random() * h,
-      height: 8 + Math.random() * 14,          // tall teardrop
-      width: 1.5 + Math.random() * 2,
-      speed: 0.3 + Math.random() * 0.6,        // very slow slide
-      trail: 6 + Math.random() * 10,           // teardrop trail length
-    })
-  }
-}
-
-function drawWindowDrops(ctx, w, h) {
-  for (const d of windowDrops) {
-    // Teardrop: narrow top, wider bottom
-    const opacity = 0.25 + Math.random() * 0.15
-
-    // Trail (fading)
-    ctx.fillStyle = `rgba(180, 210, 240, ${(opacity * 0.4).toFixed(2)})`
-    ctx.fillRect(d.x, d.y - d.trail, d.width * 0.4, d.trail)
-
-    // Main drop body (elongated)
-    ctx.fillStyle = `rgba(180, 210, 240, ${opacity.toFixed(2)})`
-    // Narrow top
-    ctx.fillRect(d.x, d.y, d.width * 0.5, d.height * 0.4)
-    // Wider bottom
-    ctx.fillRect(d.x - 0.5, d.y + d.height * 0.3, d.width + 1, d.height * 0.7)
-
-    d.y += d.speed
-    if (d.y > h + 20) {
-      d.y = -20
-      d.x = w * 0.05 + Math.random() * w * 0.9
-    }
-  }
-}
-
 /* ── Rain animation loop (runs only when rainy) ──────────── */
 function startRainLoop() {
   const canvas = rainCanvasRef.value
@@ -482,7 +255,6 @@ function startRainLoop() {
       c.width = w
       c.height = h
       initRain(w, h)
-      initWindowDrops(w, h)
     }
   }
   resizeRainCanvas()
@@ -494,7 +266,6 @@ function startRainLoop() {
     const c = rainCanvasRef.value
     if (!c) return
     const ctx2 = c.getContext('2d')
-    drawWindowDrops(ctx2, c.width, c.height)
     drawRain(ctx2, c.width, c.height)
     rainRafId = requestAnimationFrame(rainLoop)
   }
@@ -614,7 +385,7 @@ onUnmounted(() => {
       class="scene-bg__canvas"
       :style="{ opacity: canvasOpacity }"
     />
-    <!-- Layer 1: Rain + window drops (high-res full window) -->
+    <!-- Layer 1: Rain overlay (high-res full window) -->
     <canvas
       ref="rainCanvasRef"
       class="scene-bg__rain"

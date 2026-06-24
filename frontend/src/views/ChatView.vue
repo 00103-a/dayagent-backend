@@ -8,6 +8,9 @@ const { animateEnter } = useKeepAliveEnter()
 const input = ref('')
 const loading = ref(false)
 const error = ref('')
+
+// 独立 Chat 页先用页面内存保存本轮会话。
+// 后续如果要跨天/跨设备保留历史，再加 chat_history 表会更合适。
 const messages = ref([
   {
     role: 'assistant',
@@ -21,6 +24,7 @@ const scroller = ref(null)
 const canSend = computed(() => input.value.trim() && !loading.value)
 
 async function scrollToBottom() {
+  // 等 DOM 更新后再滚动，否则刚 push 的消息高度还没计算出来。
   await nextTick()
   if (scroller.value) {
     scroller.value.scrollTop = scroller.value.scrollHeight
@@ -31,6 +35,7 @@ async function submit() {
   const text = input.value.trim()
   if (!text || loading.value) return
 
+  // 乐观地先显示用户消息，让交互感觉更即时。
   messages.value.push({ role: 'user', text })
   input.value = ''
   error.value = ''
@@ -42,6 +47,8 @@ async function submit() {
     messages.value.push({
       role: 'assistant',
       text: res.reply || '我暂时没有想好怎么回答。',
+      // needAnalysis / usedContext / toolResults 是“可解释信息”。
+      // 它们用来观察 Agent 参考了什么，不展示模型内部推理链。
       needAnalysis: res.need_analysis || null,
       usedContext: res.used_context || [],
       toolResults: res.tool_results || [],
@@ -137,10 +144,10 @@ async function submit() {
   min-height: 0;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto auto;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.025), transparent 80px),
-    rgba(12, 12, 10, 0.9);
-  border: 1px solid rgba(224, 112, 48, 0.13);
+  background: rgba(12, 9, 6, 0.54);
+  border: 1px solid rgba(210, 176, 132, 0.14);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   box-shadow: var(--shadow-lg);
 }
 
@@ -170,20 +177,20 @@ async function submit() {
   line-height: 1.8;
   color: var(--text);
   padding: 13px 15px;
-  border: 1px solid rgba(224, 112, 48, 0.12);
-  background: rgba(255,255,255,0.024);
+  border: 1px solid rgba(210, 176, 132, 0.13);
+  background: rgba(14, 10, 7, 0.54);
 }
 .chat-msg--user .chat-msg__text {
-  color: #0b0a08;
-  background: var(--weather-accent, var(--orange));
-  border-color: var(--weather-accent, var(--orange));
+  color: var(--text);
+  background: rgba(224, 112, 48, 0.075);
+  border-color: rgba(224, 112, 48, 0.18);
 }
 
 .chat-trace {
   margin-top: 8px;
   padding: 9px 11px;
-  border-left: 2px solid var(--weather-accent-line, rgba(224,112,48,0.24));
-  background: rgba(255,255,255,0.018);
+  border-left: 2px solid rgba(210, 176, 132, 0.16);
+  background: rgba(14, 10, 7, 0.42);
 }
 .chat-trace__line {
   font-size: 11px;
@@ -204,7 +211,7 @@ async function submit() {
   grid-template-columns: minmax(0, 1fr) 84px;
   gap: 10px;
   padding: 14px;
-  border-top: 1px solid rgba(224,112,48,0.1);
+  border-top: 1px solid rgba(210, 176, 132, 0.12);
 }
 .chat-input__field {
   width: 100%;
@@ -213,21 +220,26 @@ async function submit() {
   font-size: 13px;
   line-height: 1.7;
   color: var(--text);
-  background: rgba(7, 7, 6, 0.76);
-  border: 1px solid rgba(224, 112, 48, 0.15);
+  background: rgba(12, 9, 6, 0.50);
+  border: 1px solid rgba(210, 176, 132, 0.14);
   outline: none;
   padding: 10px 12px;
 }
 .chat-input__field:focus {
-  border-color: var(--weather-accent-line, rgba(224,112,48,0.3));
+  border-color: rgba(210, 176, 132, 0.26);
 }
 .chat-input__send {
   font-family: var(--font-body);
   font-size: 13px;
-  color: #090a09;
-  background: var(--weather-accent, var(--orange));
-  border: 1px solid var(--weather-accent, var(--orange));
+  color: var(--text);
+  background: rgba(224, 112, 48, 0.07);
+  border: 1px solid rgba(224, 112, 48, 0.16);
   cursor: pointer;
+}
+.chat-input__send:hover:not(:disabled) {
+  color: var(--text);
+  background: rgba(224, 112, 48, 0.08);
+  border-color: rgba(224, 112, 48, 0.20);
 }
 .chat-input__send:disabled {
   opacity: 0.34;

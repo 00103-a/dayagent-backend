@@ -8,6 +8,7 @@ import FocusList from '@/components/home/FocusList.vue'
 import CourseTimeline from '@/components/home/CourseTimeline.vue'
 import HomeRightPanel from '@/components/home/HomeRightPanel.vue'
 import HomeSkeleton from '@/components/home/HomeSkeleton.vue'
+// Today 页内嵌入口：用户看完规划后可以马上追问“现在先做什么”。
 import ChatInline from '@/components/home/ChatInline.vue'
 
 const userStore = useUserStore()
@@ -73,6 +74,7 @@ onMounted(() => {
             </div>
 
             <div :class="animateEnter ? 'anim-enter anim-enter--4' : ''">
+              <!-- 这里传的是页面已有预览；完整可信上下文由 Java ChatService 再查。 -->
               <ChatInline
                 :plan="planData"
                 :focus-items="focusItems"
@@ -135,7 +137,12 @@ onMounted(() => {
 .home-main {
   min-width: 0;
   position: relative;
-  background: linear-gradient(90deg, rgba(8,6,4,0.75) 0%, rgba(8,6,4,0.45) 80%, transparent 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(12, 9, 6, 0.58) 0%,
+    rgba(12, 9, 6, 0.38) 72%,
+    rgba(12, 9, 6, 0.12) 100%
+  );
   border-radius: 0 4px 4px 0;
 }
 

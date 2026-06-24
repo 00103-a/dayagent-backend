@@ -9,6 +9,7 @@ import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * TODO: 后续解析 JSON 并写入 InfluxDB
  */
 @Component
+@ConditionalOnProperty(prefix = "mqtt", name = "enabled", havingValue = "true")
 public class MqttSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(MqttSubscriber.class);

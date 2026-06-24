@@ -17,7 +17,7 @@ from agent_service.tools.courses import (
     _get_current_week,
     _is_week_active,
 )
-from agent_service.tools.jwc import browser_login_and_parse
+from agent_service.tools.jwc import parse_schedule_to_courses
 # Background AI processing state (in-memory, resets on restart) — now per-user
 _ai_states: dict[str, dict] = {}
 
@@ -140,24 +140,32 @@ async def ai_status(user_id: str = Query("")) -> dict:
 
 
 @router.post("/browser-import")
-async def browser_import(user_id: str = Query("")) -> dict:
-    """桌面端浏览器自动导入课表（Playwright 自动化）
+async def browser_import(
+    payload: Optional[dict] = Body(default=None),
+    user_id: str = Query(""),
+) -> dict:
+    """Import courses from HTML captured by the Electron lightweight browser.
 
-    启动 Chromium 浏览器，用户在浏览器中手动登录教务系统，
-    登录后自动检测课表页面并解析课程数据。
-
-    Query:
-      user_id: 用户 ID
+    The desktop app opens a normal BrowserWindow for manual JWC login. Once the
+    renderer detects a schedule page, it posts the captured page HTML here. The
+    Python service parses and saves the schedule; it must not launch Playwright.
     """
-    try:
-        courses = await browser_login_and_parse(timeout_seconds=300)
-    except RuntimeError as e:
-        raise HTTPException(status_code=408, detail=f"导入超时：{e}")
+    if not payload:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing schedule page HTML. Use the desktop lightweight browser import first.",
+        )
+
+    courses, parse_errors = _parse_courses_from_browser_payload(payload)
+    if parse_errors:
+        print("[courses browser-import] parse fallbacks:", " | ".join(parse_errors[:3]))
 
     if not courses:
-        raise HTTPException(status_code=400, detail="未能解析到课程数据，请确认已进入课表页面")
+        raise HTTPException(
+            status_code=400,
+            detail="Could not parse courses. Please keep the lightweight browser on the visible schedule page.",
+        )
 
-    # Normalize courses before saving
     normalized = [normalize_course(c) for c in courses]
     save_courses(normalized, user_id)
 
@@ -168,8 +176,44 @@ async def browser_import(user_id: str = Query("")) -> dict:
         "courses": normalized,
         "current_week": current_week,
         "total_weeks": 20,
-        "message": f"成功导入 {len(normalized)} 门课程",
+        "message": f"Imported {len(normalized)} courses",
     }
+
+
+def _parse_courses_from_browser_payload(payload: dict) -> tuple[list[dict], list[str]]:
+    """Parse schedule HTML submitted by the Electron lightweight browser."""
+    candidates: list[tuple[str, str]] = []
+
+    html = payload.get("html")
+    if isinstance(html, str) and html.strip():
+        candidates.append(("page", html))
+
+    for idx, frame in enumerate(payload.get("frames") or []):
+        if isinstance(frame, dict):
+            frame_html = frame.get("html")
+            frame_url = frame.get("url") or f"frame-{idx}"
+            if isinstance(frame_html, str) and frame_html.strip():
+                candidates.append((str(frame_url), frame_html))
+
+    for idx, item in enumerate(payload.get("htmls") or []):
+        if isinstance(item, str) and item.strip():
+            candidates.append((f"htmls-{idx}", item))
+
+    if not candidates:
+        return [], ["payload has no html candidates"]
+
+    best_courses: list[dict] = []
+    errors: list[str] = []
+    for label, candidate_html in candidates:
+        try:
+            parsed = parse_schedule_to_courses(candidate_html)
+        except Exception as exc:
+            errors.append(f"{label}: {exc}")
+            continue
+        if len(parsed) > len(best_courses):
+            best_courses = parsed
+
+    return best_courses, errors
 
 
 async def _process_cells_background(

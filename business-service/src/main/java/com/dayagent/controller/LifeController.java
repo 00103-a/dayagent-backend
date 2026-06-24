@@ -82,10 +82,11 @@ public class LifeController {
     }
 
     @PostMapping("/courses/browser-import")
-    public ResponseEntity<Map<String, Object>> importCourses() {
+    public ResponseEntity<Map<String, Object>> importCourses(
+            @RequestBody(required = false) Map<String, Object> body) {
         Long userId = UserContext.getCurrentUser();
         String userIdStr = userId != null ? String.valueOf(userId) : "";
-        Map<String, Object> result = lifeAgentClient.callImportCourses(userIdStr);
+        Map<String, Object> result = lifeAgentClient.callImportCourses(userIdStr, body);
         return ResponseEntity.ok(result);
     }
 

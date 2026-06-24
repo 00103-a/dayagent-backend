@@ -22,8 +22,8 @@ except Exception as e:
 def _build_llm() -> AsyncOpenAI:
     proxy = os.getenv("LLM_PROXY", "")
     kwargs = {
-        "api_key": os.getenv("DEEPSEEK_API_KEY", "sk-xxx"),
-        "base_url": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
+        "api_key": os.getenv("LLM_API_KEY", "sk-placeholder"),
+        "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
         "http_client": httpx.AsyncClient(
             timeout=httpx.Timeout(60.0, connect=15.0),
             follow_redirects=True,
@@ -119,7 +119,7 @@ async def _ask_llm(question: str) -> str:
     client = _build_llm()
     try:
         resp = await client.chat.completions.create(
-            model=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
+            model=os.getenv("LLM_MODEL", "deepseek-chat"),
             messages=[
                 {"role": "system", "content": "你是桌面助手，回答简洁口语化，50字以内，像朋友。"},
                 {"role": "user", "content": question},

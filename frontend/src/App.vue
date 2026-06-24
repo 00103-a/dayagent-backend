@@ -39,6 +39,7 @@ const navItems = [
   { name: 'Summary', label: '日记', path: '/summary' },
   { name: 'Goals', label: '目标', path: '/goals' },
   { name: 'Life', label: '生活', path: '/life' },
+  // 对话是跨模块能力，所以放进一级导航，而不是藏在生活页里。
   { name: 'Chat', label: '对话', path: '/chat' },
   { name: 'Settings', label: '设置', path: '/settings' },
 ]
@@ -147,16 +148,16 @@ const activeNav = computed(() => route.name)
   --orange: #e07030;
   --orange-dim: #8b4a1f;
   --card: rgba(14, 9, 5, 0.75);
-  --card-border: rgba(224, 112, 48, 0.13);
+  --card-border: rgba(224, 112, 48, 0.22);
   --text: #c8b89a;
-  --text-dim: #6b5a48;
+  --text-dim: #8a765f;
   --nav-bg: rgba(6, 4, 3, 0.82);
 
   /* Extended palette */
   --orange-hover: #f08040;
-  --orange-glow: rgba(224, 112, 48, 0.18);
-  --orange-soft: rgba(224, 112, 48, 0.08);
-  --border-subtle: rgba(224, 112, 48, 0.06);
+  --orange-glow: rgba(224, 112, 48, 0.24);
+  --orange-soft: rgba(224, 112, 48, 0.11);
+  --border-subtle: rgba(224, 112, 48, 0.12);
 
   --font-display: 'Press Start 2P', 'zpix', monospace;
   --font-body: 'zpix', 'Press Start 2P', monospace;
@@ -178,14 +179,14 @@ const activeNav = computed(() => route.name)
   --duration-slow: 400ms;
 
   /* Type scale */
-  --text-2xs: 11px;
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-base: 14px;
-  --text-md: 15px;
-  --text-lg: 16px;
-  --text-xl: 18px;
-  --text-2xl: 22px;
+  --text-2xs: 12px;
+  --text-xs: 13px;
+  --text-sm: 14px;
+  --text-base: 15px;
+  --text-md: 16px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
 
   /* Weights */
   --weight-normal: 400;
@@ -284,8 +285,8 @@ const activeNav = computed(() => route.name)
 
 .titlebar__wordmark {
   font-family: var(--font-display);
-  font-size: 11px;
-  color: var(--orange);
+  font-size: 12px;
+  color: var(--orange-hover);
   letter-spacing: 1px;
   -webkit-app-region: no-drag;
   image-rendering: pixelated;
@@ -294,7 +295,7 @@ const activeNav = computed(() => route.name)
 .titlebar__date {
   font-family: var(--font-body);
   font-size: var(--text-2xs);
-  color: var(--text-dim);
+  color: #9a8468;
 }
 
 .titlebar__center { flex: 1; -webkit-app-region: drag; }
@@ -352,8 +353,8 @@ const activeNav = computed(() => route.name)
 
 .app-wordmark {
   font-family: var(--font-display);
-  font-size: 11px;
-  color: var(--orange);
+  font-size: 12px;
+  color: var(--orange-hover);
   letter-spacing: 1px;
   image-rendering: pixelated;
 }
@@ -416,9 +417,9 @@ const activeNav = computed(() => route.name)
 
 .sidebar__wordmark {
   font-family: var(--font-display);
-  font-size: 10px;
-  color: var(--orange);
-  line-height: 1.6;
+  font-size: 12px;
+  color: var(--orange-hover);
+  line-height: 1.55;
   letter-spacing: 1px;
   image-rendering: pixelated;
   word-break: break-all;
@@ -434,12 +435,12 @@ const activeNav = computed(() => route.name)
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: 10px;
+  padding: 8px 10px;
   text-decoration: none;
   font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--text-dim);
+  font-size: 15px;
+  color: #a58b6e;
   position: relative;
   border: 1px solid transparent;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
@@ -449,24 +450,24 @@ const activeNav = computed(() => route.name)
 
 .nav-item:hover {
   color: var(--text);
-  background: rgba(224, 112, 48, 0.04);
-  border-color: rgba(224, 112, 48, 0.08);
+  background: rgba(224, 112, 48, 0.08);
+  border-color: rgba(224, 112, 48, 0.18);
 }
 
 .nav-item__caret {
   width: 2px;
-  height: 10px;
+  height: 14px;
   flex-shrink: 0;
   opacity: 0;
-  background: #e07030;
+  background: var(--orange-hover);
   image-rendering: pixelated;
   transition: opacity 0.1s;
 }
 
 .nav-item--active {
-  color: #e07030;
-  background: rgba(224, 112, 48, 0.10);
-  border-color: rgba(224, 112, 48, 0.12);
+  color: var(--orange-hover);
+  background: rgba(224, 112, 48, 0.14);
+  border-color: rgba(224, 112, 48, 0.28);
 }
 
 .nav-item--active .nav-item__caret {
@@ -487,7 +488,7 @@ const activeNav = computed(() => route.name)
   align-items: center;
   gap: 6px;
   padding: 12px 8px;
-  border-top: 1px solid var(--card-border);
+  border-top: 1px solid rgba(224, 112, 48, 0.24);
 }
 
 .sidebar__status-dot {
@@ -501,15 +502,15 @@ const activeNav = computed(() => route.name)
 
 .sidebar__status-text {
   font-family: var(--font-display);
-  font-size: 9px;
-  color: #5a8a40;
+  font-size: 10px;
+  color: #7fb36a;
   letter-spacing: 1px;
   image-rendering: pixelated;
 }
 
 @keyframes statusBlink {
   0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(76, 175, 80, 0.5); }
-  50% { opacity: 0.2; box-shadow: 0 0 2px rgba(76, 175, 80, 0.15); }
+  50% { opacity: 0.45; box-shadow: 0 0 3px rgba(76, 175, 80, 0.25); }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -534,8 +535,8 @@ const activeNav = computed(() => route.name)
   z-index: 0;
   background: linear-gradient(
     90deg,
-    rgba(6,4,3,0.85) 0%,
-    rgba(6,4,3,0.6) 60%,
+    rgba(6,4,3,0.72) 0%,
+    rgba(6,4,3,0.42) 60%,
     transparent 100%
   );
 }

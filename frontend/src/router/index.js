@@ -39,6 +39,7 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    // 独立对话页：适合连续提问和观察 Agent 的需求分析/上下文引用。
     path: '/chat',
     name: 'Chat',
     component: () => import('@/views/ChatView.vue'),

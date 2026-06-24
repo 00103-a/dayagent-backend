@@ -119,15 +119,16 @@ public class LifeAgentClient {
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> callImportCourses(String userId) {
+    public Map<String, Object> callImportCourses(String userId, Map<String, Object> body) {
         StringBuilder url = new StringBuilder(agentBaseUrl + "/courses/browser-import");
         if (userId != null && !userId.isEmpty()) {
             url.append("?user_id=").append(userId);
         }
         try {
-            return restTemplate.postForObject(url.toString(), null, Map.class);
+            Map<String, Object> requestBody = body != null ? body : Map.of();
+            return restTemplate.postForObject(url.toString(), requestBody, Map.class);
         } catch (Exception e) {
-            return Map.of("status", "error", "message", "导入失败：" + e.getMessage());
+            return Map.of("status", "error", "message", "Import failed: " + e.getMessage());
         }
     }
 
